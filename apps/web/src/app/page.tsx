@@ -1,6 +1,7 @@
 "use client";
 import SocialGraph from "../components/SocialGraph";
 import Link from "next/link";
+import toast from "react-hot-toast";
 import {
   ArrowRight,
   Database,
@@ -682,14 +683,24 @@ export default function LandingPage() {
             </Link>
             <a
               href="https://github.com/Zerith-Labs/ZerithDB"
+              target="_blank"
+              rel="noreferrer"
               className="hover:text-gray-900 transition-colors"
             >
               GitHub
             </a>
-            <Link href="/blog" className="hover:text-gray-900 transition-colors">
+            <Link
+              href="/"
+              onClick={() => toast("Blog will be available soon")}
+              className="hover:text-gray-900 transition-colors cursor-pointer"
+            >
               Blog
             </Link>
-            <Link href="/pricing" className="hover:text-gray-900 transition-colors">
+            <Link
+              href="/"
+              onClick={() => toast("Pricing will be available soon")}
+              className="hover:text-gray-900 transition-colors cursor-pointer"
+            >
               Pricing
             </Link>
             <a
