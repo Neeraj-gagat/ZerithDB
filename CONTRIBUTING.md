@@ -62,7 +62,8 @@ pnpm --filter zerithdb-sdk dev
   [`good-first-issue`](https://github.com/Zerith-Labs/ZerithDB/issues?q=label%3Agood-first-issue) or
   [`help-wanted`](https://github.com/Zerith-Labs/ZerithDB/issues?q=label%3Ahelp-wanted).
 - For features, open a Discussion before writing code.
-- Comment `/assign` to automatically claim an issue. Use `/unassign` if you can no longer work on it.
+- Comment `/assign` to automatically claim an issue. Use `/unassign` if you can no longer work on
+  it.
 
 ### 2. Branch Naming
 
@@ -159,7 +160,6 @@ pnpm --filter zerithdb-db test --watch
 - [ ] `pnpm test` passes
 - [ ] `pnpm typecheck` shows no errors
 - [ ] `pnpm lint` passes
-- [ ] `pnpm format:check` passes
 - [ ] New/changed public APIs have TSDoc comments
 - [ ] Changeset added (`pnpm changeset`) if a published package changed
 - [ ] PR description explains **what**, **why**, and **how**
