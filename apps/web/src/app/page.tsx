@@ -140,25 +140,39 @@ export default function LandingPage() {
           <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[400px] h-[400px] bg-blue-50/30 rounded-full blur-[80px]" />
 
           {/* Structured Decorative Elements - Moved closer for framing */}
-          {/* Left Square - Improved: unique asymmetrical tilt */}
+          {/* Left Abstract Shape - More animated & fluid */}
           <motion.div
             animate={{
-              y: [0, -12, 0],
-              scale: [1, 1.05, 1],
-              rotate: [-15, -8, -15],
+              y: [0, -25, 10, 0],
+              x: [0, 15, -10, 0],
+              scale: [1, 1.1, 0.95, 1],
+              rotate: [-15, 5, -25, -15],
+              borderRadius: ["2.5rem", "4rem", "2rem", "2.5rem"],
             }}
-            transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute top-[12%] left-[8%] w-32 h-32 bg-white/20 border border-blue-200/40 rounded-[2.5rem] backdrop-blur-[8px] hidden xl:block shadow-[0_12px_40px_rgba(59,130,246,0.12)] -rotate-[15deg]"
+            transition={{ 
+              duration: 12, 
+              repeat: Infinity, 
+              ease: "easeInOut" 
+            }}
+            className="absolute top-[10%] left-[5%] w-40 h-40 bg-white/20 border border-blue-200/40 backdrop-blur-[12px] hidden xl:block shadow-[0_20px_50px_rgba(59,130,246,0.15)]"
           />
 
-          {/* Right Tilted Square - Improved: unique asymmetrical tilt */}
+          {/* Right Abstract Shape - Reduced size and softened shadow */}
           <motion.div
             animate={{
-              y: [0, 12, 0],
-              rotate: [25, 32, 25],
+              y: [0, 20, -10, 0],
+              x: [0, -15, 10, 0],
+              scale: [1, 0.95, 1.05, 1],
+              rotate: [25, 40, 20, 25],
+              borderRadius: ["2.5rem", "4rem", "2rem", "2.5rem"],
             }}
-            transition={{ duration: 9, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
-            className="absolute top-[38%] right-[6%] w-52 h-52 bg-white/10 border border-indigo-200/40 rounded-[3rem] backdrop-blur-[6px] rotate-[25deg] hidden xl:block shadow-[0_8px_32px_rgba(99,102,241,0.08)]"
+            transition={{ 
+              duration: 15, 
+              repeat: Infinity, 
+              ease: "easeInOut",
+              delay: 1 
+            }}
+            className="absolute top-[38%] right-[5%] w-52 h-52 bg-white/10 border border-indigo-200/40 backdrop-blur-[6px] hidden xl:block shadow-[0_8px_30px_rgba(99,102,241,0.06)]"
           />
         </div>
 
@@ -651,20 +665,32 @@ export default function LandingPage() {
 
           <motion.div
             animate={{
-              y: [0, -10, 0],
-              scale: [1, 1.1, 1],
-              rotate: [12, 20, 12],
+              y: [0, -20, 15, 0],
+              x: [0, 10, -15, 0],
+              rotate: [12, 28, 5, 12],
+              borderRadius: ["2rem", "3.5rem", "1.5rem", "2rem"],
             }}
-            transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute top-16 left-[15%] w-32 h-32 bg-white/15 border border-blue-200/30 rounded-[2rem] backdrop-blur-[6px] hidden md:block shadow-[0_8px_24px_rgba(0,0,0,0.06)] rotate-[12deg]"
+            transition={{ 
+              duration: 14, 
+              repeat: Infinity, 
+              ease: "easeInOut" 
+            }}
+            className="absolute top-12 left-[12%] w-36 h-36 bg-white/15 border border-blue-200/30 backdrop-blur-[10px] hidden md:block shadow-[0_15px_35px_rgba(0,0,0,0.08)]"
           />
           <motion.div
             animate={{
-              y: [0, 15, 0],
-              rotate: [-20, -28, -20],
+              y: [0, 20, -15, 0],
+              x: [0, -10, 8, 0],
+              rotate: [-20, -30, -15, -20],
+              borderRadius: ["3rem", "4rem", "2rem", "3rem"],
             }}
-            transition={{ duration: 8, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-            className="absolute bottom-16 right-[15%] w-52 h-52 bg-white/5 border border-gray-200/40 rounded-[3.5rem] backdrop-blur-[4px] -rotate-[20deg] hidden md:block shadow-[0_8px_32px_rgba(0,0,0,0.04)]"
+            transition={{ 
+              duration: 18, 
+              repeat: Infinity, 
+              ease: "easeInOut", 
+              delay: 1 
+            }}
+            className="absolute bottom-12 right-[15%] w-48 h-48 bg-white/5 border border-gray-200/40 backdrop-blur-[5px] hidden md:block shadow-[0_10px_30px_rgba(0,0,0,0.03)]"
           />
         </div>
 
