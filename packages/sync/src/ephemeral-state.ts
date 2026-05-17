@@ -1,4 +1,9 @@
-import type { EphemeralPeerState, IncomingPeerDataMessage, PeerId, ZerithDBConfig } from "zerithdb-core";
+import type {
+  EphemeralPeerState,
+  IncomingPeerDataMessage,
+  PeerId,
+  ZerithDBConfig,
+} from "zerithdb-core";
 import { EventEmitter } from "zerithdb-core";
 import type { NetworkManager } from "zerithdb-network";
 

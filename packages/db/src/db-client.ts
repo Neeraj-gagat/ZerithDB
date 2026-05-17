@@ -277,9 +277,7 @@ export class CollectionClient<T extends Record<string, any> = Record<string, any
         }
 
         const regex =
-          conditions.$regex instanceof RegExp
-            ? conditions.$regex
-            : new RegExp(conditions.$regex);
+          conditions.$regex instanceof RegExp ? conditions.$regex : new RegExp(conditions.$regex);
 
         regex.lastIndex = 0;
 
@@ -323,8 +321,6 @@ class ZerithDBDexie extends Dexie {
     super(`zerithdb_${appId}`);
   }
 
-
-
   /**
    * Ensure a named collection exists, creating it via a Dexie version
    * upgrade if it has not been registered yet.
@@ -352,30 +348,30 @@ class ZerithDBDexie extends Dexie {
   }
 
   ensureGraphTables(graphName: string): { nodesTable: Table; edgesTable: Table } {
-  const nodesKey = `__graph_nodes_${graphName}`;
-  const edgesKey = `__graph_edges_${graphName}`;
+    const nodesKey = `__graph_nodes_${graphName}`;
+    const edgesKey = `__graph_edges_${graphName}`;
 
-  if (!this.tableMap.has(nodesKey) || !this.tableMap.has(edgesKey)) {
-    this._currentSchema[nodesKey] = "_id, _createdAt, _updatedAt";
-    this._currentSchema[edgesKey] = "_id, from, to, label, _createdAt";
+    if (!this.tableMap.has(nodesKey) || !this.tableMap.has(edgesKey)) {
+      this._currentSchema[nodesKey] = "_id, _createdAt, _updatedAt";
+      this._currentSchema[edgesKey] = "_id, from, to, label, _createdAt";
 
-    const nextVersion = Math.max(this.verno, this._pendingVersion) + 1;
-    this._pendingVersion = nextVersion;
+      const nextVersion = Math.max(this.verno, this._pendingVersion) + 1;
+      this._pendingVersion = nextVersion;
 
-    if (this.isOpen()) {
-      this.close();
+      if (this.isOpen()) {
+        this.close();
+      }
+
+      this.version(nextVersion).stores(this._currentSchema);
+      this.tableMap.set(nodesKey, this.table(nodesKey));
+      this.tableMap.set(edgesKey, this.table(edgesKey));
     }
 
-    this.version(nextVersion).stores(this._currentSchema);
-    this.tableMap.set(nodesKey, this.table(nodesKey));
-    this.tableMap.set(edgesKey, this.table(edgesKey));
+    return {
+      nodesTable: this.tableMap.get(nodesKey)!,
+      edgesTable: this.tableMap.get(edgesKey)!,
+    };
   }
-
-  return {
-    nodesTable: this.tableMap.get(nodesKey)!,
-    edgesTable: this.tableMap.get(edgesKey)!,
-  };
-}
 }
 
 /**
@@ -410,19 +406,15 @@ export class DbClient {
   }
 
   graph<T extends Record<string, any> = Record<string, any>>(name: string): GraphClient<T> {
-  if (!this.graphs.has(name)) {
-    const { nodesTable, edgesTable } = this.dexie.ensureGraphTables(name);
-    this.graphs.set(
-      name,
-      new GraphClient<T>(
-        nodesTable as Table<GraphNode<T>>,
-        edgesTable as Table<GraphEdge>,
-        name
-      )
-    );
+    if (!this.graphs.has(name)) {
+      const { nodesTable, edgesTable } = this.dexie.ensureGraphTables(name);
+      this.graphs.set(
+        name,
+        new GraphClient<T>(nodesTable as Table<GraphNode<T>>, edgesTable as Table<GraphEdge>, name)
+      );
+    }
+    return this.graphs.get(name) as GraphClient<T>;
   }
-  return this.graphs.get(name) as GraphClient<T>;
-}
 
   async getMemoryStats(): Promise<{ recordCount: number; collections: Record<string, number> }> {
     const collections: Record<string, number> = {};

@@ -25,9 +25,7 @@ console.log(
 `)
 );
 
-console.log(
-  chalk.gray(`  Build full-stack apps with ZERO backend. v${VERSION}\n`)
-);
+console.log(chalk.gray(`  Build full-stack apps with ZERO backend. v${VERSION}\n`));
 
 async function main() {
   await checkConnectivity();

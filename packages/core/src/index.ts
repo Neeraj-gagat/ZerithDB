@@ -60,7 +60,4 @@ export {
   IncomingPeerDataMessageSchema,
 } from "./schemas/messages.js";
 
-export type {
-  PeerDataMessage,
-  IncomingPeerDataMessage,
-} from "./schemas/messages.js";
+export type { PeerDataMessage, IncomingPeerDataMessage } from "./schemas/messages.js";

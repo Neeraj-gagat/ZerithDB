@@ -72,66 +72,61 @@ export const LeaderHeartbeatMessageSchema = z
   })
   .strict();
 
-export const PeerDataMessageSchema =
-  z.discriminatedUnion("type", [
-    SyncUpdateMessageSchema,
-    AwarenessMessageSchema,
-    EphemeralMessageSchema,
-    MediaStreamMetadataMessageSchema,
-    MediaStreamRemovedMessageSchema,
-    SyncUpgradeOfferMessageSchema,
-    SyncUpgradeAcceptMessageSchema,
-    LeaderHeartbeatMessageSchema,
-    PingMessageSchema,
-    PongMessageSchema,
-  ]);
+export const PeerDataMessageSchema = z.discriminatedUnion("type", [
+  SyncUpdateMessageSchema,
+  AwarenessMessageSchema,
+  EphemeralMessageSchema,
+  MediaStreamMetadataMessageSchema,
+  MediaStreamRemovedMessageSchema,
+  SyncUpgradeOfferMessageSchema,
+  SyncUpgradeAcceptMessageSchema,
+  LeaderHeartbeatMessageSchema,
+  PingMessageSchema,
+  PongMessageSchema,
+]);
 
-export const IncomingPeerDataMessageSchema =
-  z.discriminatedUnion("type", [
-    SyncUpdateMessageSchema.extend({
-      from: PeerIdSchema,
-    }).strict(),
+export const IncomingPeerDataMessageSchema = z.discriminatedUnion("type", [
+  SyncUpdateMessageSchema.extend({
+    from: PeerIdSchema,
+  }).strict(),
 
-    AwarenessMessageSchema.extend({
-      from: PeerIdSchema,
-    }).strict(),
+  AwarenessMessageSchema.extend({
+    from: PeerIdSchema,
+  }).strict(),
 
-    EphemeralMessageSchema.extend({
-      from: PeerIdSchema,
-    }).strict(),
+  EphemeralMessageSchema.extend({
+    from: PeerIdSchema,
+  }).strict(),
 
-    MediaStreamMetadataMessageSchema.extend({
-      from: PeerIdSchema,
-    }).strict(),
+  MediaStreamMetadataMessageSchema.extend({
+    from: PeerIdSchema,
+  }).strict(),
 
-    MediaStreamRemovedMessageSchema.extend({
-      from: PeerIdSchema,
-    }).strict(),
+  MediaStreamRemovedMessageSchema.extend({
+    from: PeerIdSchema,
+  }).strict(),
 
-    SyncUpgradeOfferMessageSchema.extend({
-      from: PeerIdSchema,
-    }).strict(),
+  SyncUpgradeOfferMessageSchema.extend({
+    from: PeerIdSchema,
+  }).strict(),
 
-    SyncUpgradeAcceptMessageSchema.extend({
-      from: PeerIdSchema,
-    }).strict(),
+  SyncUpgradeAcceptMessageSchema.extend({
+    from: PeerIdSchema,
+  }).strict(),
 
-    LeaderHeartbeatMessageSchema.extend({
-      from: PeerIdSchema,
-    }).strict(),
+  LeaderHeartbeatMessageSchema.extend({
+    from: PeerIdSchema,
+  }).strict(),
 
-    PingMessageSchema.extend({
-      from: PeerIdSchema,
-    }).strict(),
+  PingMessageSchema.extend({
+    from: PeerIdSchema,
+  }).strict(),
 
-    PongMessageSchema.extend({
-      from: PeerIdSchema,
-    }).strict(),
-  ]);
+  PongMessageSchema.extend({
+    from: PeerIdSchema,
+  }).strict(),
+]);
 
-export type PeerDataMessage = z.infer<
-  typeof PeerDataMessageSchema
->;
+export type PeerDataMessage = z.infer<typeof PeerDataMessageSchema>;
 
-export type IncomingPeerDataMessage =
-  z.infer<typeof IncomingPeerDataMessageSchema>;
+export type IncomingPeerDataMessage = z.infer<typeof IncomingPeerDataMessageSchema>;

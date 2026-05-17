@@ -6,7 +6,7 @@ import type {
   MediaStreamKind,
   MediaStreamMetadata,
   IncomingPeerDataMessage,
-  PeerDataMessage
+  PeerDataMessage,
 } from "zerithdb-core";
 import { EventEmitter, ZerithDBError, ErrorCode, PeerDataMessageSchema } from "zerithdb-core";
 import type { AuthManager } from "zerithdb-auth";
@@ -484,14 +484,9 @@ export class NetworkManager extends EventEmitter<NetworkEvents> {
 
     peer.on("data", (data: Uint8Array | string) => {
       try {
-        const raw = JSON.parse(
-          typeof data === "string"
-            ? data
-            : new TextDecoder().decode(data)
-        );
+        const raw = JSON.parse(typeof data === "string" ? data : new TextDecoder().decode(data));
 
-        const parsed =
-          PeerDataMessageSchema.safeParse(raw);
+        const parsed = PeerDataMessageSchema.safeParse(raw);
 
         if (!parsed.success) {
           return;
@@ -662,10 +657,7 @@ export class NetworkManager extends EventEmitter<NetworkEvents> {
     return result;
   }
 
-  private handlePeerMessage(
-    remotePeerId: PeerId,
-    msg: PeerDataMessage
-  ): void {
+  private handlePeerMessage(remotePeerId: PeerId, msg: PeerDataMessage): void {
     if (msg.type === "media-stream-metadata" && typeof msg.payload === "string") {
       const metadata = JSON.parse(msg.payload) as MediaStreamMetadata;
       let peerMetadata = this.remoteStreamMetadata.get(remotePeerId);
