@@ -5,8 +5,10 @@ import type {
   PeerInfo,
   MediaStreamKind,
   MediaStreamMetadata,
+  IncomingPeerDataMessage,
+  PeerDataMessage
 } from "zerithdb-core";
-import { EventEmitter, ZerithDBError, ErrorCode } from "zerithdb-core";
+import { EventEmitter, ZerithDBError, ErrorCode, PeerDataMessageSchema } from "zerithdb-core";
 import type { AuthManager } from "zerithdb-auth";
 import type { SignalingTransport } from "./signaling-transport.js";
 import { WebSocketTransport } from "./transports/websocket-transport.js";
@@ -29,7 +31,7 @@ interface SimplePeerWithChannel {
 type NetworkEvents = {
   "peer:connected": PeerInfo;
   "peer:disconnected": { peerId: PeerId };
-  message: { type: string; payload: Uint8Array | string; from: PeerId };
+  message: IncomingPeerDataMessage;
   "media:stream": { peerId: PeerId; stream: MediaStream; metadata?: MediaStreamMetadata };
   "media:track": { peerId: PeerId; track: MediaStreamTrack; stream: MediaStream };
   "media:stream:metadata": { peerId: PeerId; metadata: MediaStreamMetadata };
@@ -194,8 +196,9 @@ export class NetworkManager extends EventEmitter<NetworkEvents> {
   /**
    * Broadcast a message to all connected peers.
    */
-  broadcast(message: { type: string; payload: string | Uint8Array }): void {
-    const data = JSON.stringify(message);
+  broadcast(message: PeerDataMessage): void {
+    const parsed = PeerDataMessageSchema.parse(message);
+    const data = JSON.stringify(parsed);
     for (const [, peer] of this.peers) {
       if (peer.connected) {
         peer.send(data);
@@ -206,10 +209,11 @@ export class NetworkManager extends EventEmitter<NetworkEvents> {
   /**
    * Send a message to a specific peer.
    */
-  sendTo(peerId: PeerId, message: { type: string; payload: string | Uint8Array }): void {
+  sendTo(peerId: PeerId, message: PeerDataMessage): void {
+    const parsed = PeerDataMessageSchema.parse(message);
     const peer = this.peers.get(peerId);
     if (peer?.connected) {
-      peer.send(JSON.stringify(message));
+      peer.send(JSON.stringify(parsed));
     }
   }
 
@@ -480,11 +484,26 @@ export class NetworkManager extends EventEmitter<NetworkEvents> {
 
     peer.on("data", (data: Uint8Array | string) => {
       try {
-        const msg = JSON.parse(
-          typeof data === "string" ? data : new TextDecoder().decode(data)
-        ) as { type: string; payload: string | Uint8Array };
-        this.handlePeerMessage(remotePeerId, msg);
-        this.emit("message", { ...msg, from: remotePeerId });
+        const raw = JSON.parse(
+          typeof data === "string"
+            ? data
+            : new TextDecoder().decode(data)
+        );
+
+        const parsed =
+          PeerDataMessageSchema.safeParse(raw);
+
+        if (!parsed.success) {
+          return;
+        }
+
+        const msg = {
+          ...parsed.data,
+          from: remotePeerId,
+        };
+
+        this.handlePeerMessage(remotePeerId, parsed.data);
+        this.emit("message", msg);
       } catch {
         // Ignore malformed messages
       }
@@ -645,7 +664,7 @@ export class NetworkManager extends EventEmitter<NetworkEvents> {
 
   private handlePeerMessage(
     remotePeerId: PeerId,
-    msg: { type: string; payload: string | Uint8Array }
+    msg: PeerDataMessage
   ): void {
     if (msg.type === "media-stream-metadata" && typeof msg.payload === "string") {
       const metadata = JSON.parse(msg.payload) as MediaStreamMetadata;

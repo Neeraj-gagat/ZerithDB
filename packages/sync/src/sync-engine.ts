@@ -1,6 +1,6 @@
 import * as Y from "yjs";
 import { IndexeddbPersistence } from "y-indexeddb";
-import type { ZerithDBConfig, SyncState, SyncPlugin } from "zerithdb-core";
+import type { ZerithDBConfig, SyncState, SyncPlugin, IncomingPeerDataMessage } from "zerithdb-core";
 import { EventEmitter } from "zerithdb-core";
 import type { DbClient } from "zerithdb-db";
 import type { NetworkManager } from "zerithdb-network";
@@ -258,7 +258,7 @@ export class SyncEngine extends EventEmitter<SyncEvents> {
     this.pendingUpdates.clear();
   }
 
-  private onPeerUpdate(msg: { type: string; payload: Uint8Array | string; from: string }): void {
+  private onPeerUpdate(msg: IncomingPeerDataMessage): void {
     if (msg.type === "sync-upgrade-offer") {
       const payloadStr =
         typeof msg.payload === "string" ? msg.payload : new TextDecoder().decode(msg.payload);
@@ -290,7 +290,13 @@ export class SyncEngine extends EventEmitter<SyncEvents> {
 
     if (msg.type !== "sync-update") return;
 
-    const payload = typeof msg.payload === "string" ? base64ToBytes(msg.payload) : msg.payload;
+    let payload: Uint8Array;
+
+    try {
+      payload = base64ToBytes(msg.payload);
+    } catch {
+      return;
+    }
 
     const decoded = this.decodeMessage(payload);
     if (decoded === null) return;
@@ -378,7 +384,7 @@ export class SyncEngine extends EventEmitter<SyncEvents> {
     const pending = await this.outbox.getPending();
     for (const mutation of pending) {
       this.network.broadcast({
-        type: mutation.type,
+        type: "sync-update",
         payload: this.encodeMessage(mutation.collection, mutation.payload),
       });
       await this.outbox.acknowledge(mutation.id);

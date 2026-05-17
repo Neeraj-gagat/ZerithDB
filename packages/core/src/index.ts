@@ -49,3 +49,18 @@ export type {
   EdgeLabel,
   GraphTraversalResult,
 } from "./types/graph.js";
+
+export {
+  PeerIdSchema,
+  SyncUpdateMessageSchema,
+  AwarenessMessageSchema,
+  PingMessageSchema,
+  PongMessageSchema,
+  PeerDataMessageSchema,
+  IncomingPeerDataMessageSchema,
+} from "./schemas/messages.js";
+
+export type {
+  PeerDataMessage,
+  IncomingPeerDataMessage,
+} from "./schemas/messages.js";
