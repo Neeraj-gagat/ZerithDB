@@ -1,10 +1,27 @@
 import { WebSocketServer, WebSocket } from "ws";
 import { createServer, type IncomingMessage, type ServerResponse } from "http";
 import { verify, type JwtPayload } from "jsonwebtoken";
+import {
+  calculatePowDifficulty,
+  createPowChallenge,
+  FixedWindowRateLimiter,
+  verifyPowSolution,
+  type PowSolutionInput,
+} from "./pow.js";
 
 const PORT = parseInt(process.env["PORT"] ?? "4000", 10);
 const HOST = process.env["HOST"] ?? "0.0.0.0";
 const JWT_SECRET = process.env["JWT_SECRET"] ?? "";
+const POW_ENABLED = process.env["POW_ENABLED"] !== "false";
+const POW_SECRET = process.env["POW_SECRET"] || JWT_SECRET || crypto.randomUUID();
+const POW_BASE_DIFFICULTY = readIntegerEnv("POW_BASE_DIFFICULTY", 12);
+const POW_MAX_DIFFICULTY = readIntegerEnv("POW_MAX_DIFFICULTY", 24);
+const POW_LOAD_STEP = readIntegerEnv("POW_LOAD_STEP", 25);
+const POW_THREAT_LEVEL = readIntegerEnv("POW_THREAT_LEVEL", 0);
+const POW_CHALLENGE_TTL_MS = readIntegerEnv("POW_CHALLENGE_TTL_MS", 60_000);
+const POW_CHALLENGE_RATE_LIMIT = readIntegerEnv("POW_CHALLENGE_RATE_LIMIT", 120);
+const POW_CHALLENGE_RATE_WINDOW_MS = readIntegerEnv("POW_CHALLENGE_RATE_WINDOW_MS", 60_000);
+const POW_TRUST_X_FORWARDED_FOR = process.env["POW_TRUST_X_FORWARDED_FOR"] === "true";
 type LogLevel = "debug" | "info" | "warn" | "error";
 
 const validLogLevels: LogLevel[] = ["debug", "info", "warn", "error"];
@@ -69,6 +86,11 @@ interface PollingSession {
 
 // sessionId → PollingSession
 const pollingSessions = new Map<string, PollingSession>();
+const usedPowSolutions = new Map<string, number>();
+const powChallengeRateLimiter = new FixedWindowRateLimiter(
+  POW_CHALLENGE_RATE_LIMIT,
+  POW_CHALLENGE_RATE_WINDOW_MS
+);
 
 /** How long a polling session can be inactive before cleanup (ms) */
 const SESSION_TIMEOUT_MS = 60_000;
@@ -84,6 +106,8 @@ setInterval(() => {
       cleanupPollingSession(sessionId);
     }
   }
+  cleanupUsedPowSolutions(now);
+  powChallengeRateLimiter.cleanup(now);
 }, 15_000);
 
 // ─── JWT Auth ───────────────────────────────────────────────────────────────
@@ -132,6 +156,11 @@ const server = createServer((req, res) => {
         active_polling_sessions: pollingSessions.size,
         rooms: rooms.size,
         peers: [...rooms.values()].reduce((acc, s) => acc + s.size, 0),
+        pow: {
+          enabled: POW_ENABLED,
+          algorithm: "hashcash-sha256",
+          difficulty: getCurrentPowDifficulty(),
+        },
         timestamp: new Date().toISOString(),
       })
     );
@@ -139,6 +168,11 @@ const server = createServer((req, res) => {
   }
 
   // ─── Long-polling endpoints ───────────────────────────────────────────
+
+  if (pathname === "/pow/challenge" && req.method === "GET") {
+    handlePowChallenge(req, url, res);
+    return;
+  }
 
   if (pathname === "/poll/join" && req.method === "POST") {
     handlePollJoin(req, res);
@@ -175,6 +209,8 @@ wss.on("connection", (ws, req) => {
   const roomId = url.searchParams.get("room");
   const peerId = url.searchParams.get("peer");
   const token: string | null = url.searchParams.get("token");
+  const powChallenge = url.searchParams.get("powChallenge");
+  const powNonce = url.searchParams.get("powNonce");
 
   if (!roomId || !peerId) {
     logger.warn(`[!] Rejected connection from ${req.socket.remoteAddress}: missing params`);
@@ -186,6 +222,13 @@ wss.on("connection", (ws, req) => {
   if (authError) {
     console.log(`[!] Rejected connection from peer=${peerId}: ${authError}`);
     ws.close(1008, authError);
+    return;
+  }
+
+  const powError = verifyRequestPow({ challenge: powChallenge, nonce: powNonce }, roomId, peerId);
+  if (powError) {
+    logger.warn(`[!] Rejected connection from peer=${peerId}: ${powError}`);
+    ws.close(1008, powError);
     return;
   }
 
@@ -328,55 +371,68 @@ function deliverToPeer(peer: PeerEntry, serialized: string): void {
  * Response: { sessionId: string, peerList: string[] }
  */
 function handlePollJoin(req: IncomingMessage, res: ServerResponse): void {
-  readJsonBody(req, (err, body: { room?: string; peer?: string; token?: string } | null) => {
-    if (err || !body?.room || !body?.peer) {
-      res.writeHead(400, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ error: "Missing room or peer" }));
-      return;
+  readJsonBody(
+    req,
+    (
+      err,
+      body: { room?: string; peer?: string; token?: string; pow?: PowSolutionInput } | null
+    ) => {
+      if (err || !body?.room || !body?.peer) {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "Missing room or peer" }));
+        return;
+      }
+
+      const authError = verifyRoomToken(body.token ?? null, body.room);
+      if (authError) {
+        res.writeHead(401, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: authError }));
+        return;
+      }
+
+      const powError = verifyRequestPow(body.pow, body.room, body.peer);
+      if (powError) {
+        res.writeHead(401, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: powError }));
+        return;
+      }
+
+      const { room: roomId, peer: peerId } = body;
+      const sessionId = crypto.randomUUID();
+
+      // Ensure room exists
+      if (!rooms.has(roomId)) {
+        rooms.set(roomId, new Set());
+      }
+      const room = rooms.get(roomId)!;
+
+      // Build peer list BEFORE adding this peer
+      const peerList = [...room].filter((p) => p.peerId !== peerId).map((p) => p.peerId);
+
+      // Create session
+      const session: PollingSession = {
+        sessionId,
+        peerId,
+        roomId,
+        messageQueue: [],
+        pendingResponse: null,
+        lastActivity: Date.now(),
+      };
+      pollingSessions.set(sessionId, session);
+
+      // Add peer to room
+      const peerEntry: PeerEntry = { peerId, sessionId };
+      room.add(peerEntry);
+
+      console.log(
+        `[+] peer=${peerId} joined room=${roomId} via HTTP polling ` +
+          `(session=${sessionId.slice(0, 8)}…, room size: ${room.size})`
+      );
+
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ sessionId, peerList }));
     }
-
-    const authError = verifyRoomToken(body.token ?? null, body.room);
-    if (authError) {
-      res.writeHead(401, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ error: authError }));
-      return;
-    }
-
-    const { room: roomId, peer: peerId } = body;
-    const sessionId = crypto.randomUUID();
-
-    // Ensure room exists
-    if (!rooms.has(roomId)) {
-      rooms.set(roomId, new Set());
-    }
-    const room = rooms.get(roomId)!;
-
-    // Build peer list BEFORE adding this peer
-    const peerList = [...room].filter((p) => p.peerId !== peerId).map((p) => p.peerId);
-
-    // Create session
-    const session: PollingSession = {
-      sessionId,
-      peerId,
-      roomId,
-      messageQueue: [],
-      pendingResponse: null,
-      lastActivity: Date.now(),
-    };
-    pollingSessions.set(sessionId, session);
-
-    // Add peer to room
-    const peerEntry: PeerEntry = { peerId, sessionId };
-    room.add(peerEntry);
-
-    console.log(
-      `[+] peer=${peerId} joined room=${roomId} via HTTP polling ` +
-        `(session=${sessionId.slice(0, 8)}…, room size: ${room.size})`
-    );
-
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ sessionId, peerList }));
-  });
+  );
 }
 
 /**
@@ -552,6 +608,101 @@ function cleanupPollingSession(sessionId: string): void {
 }
 
 // ─── Utilities ──────────────────────────────────────────────────────────────
+
+function handlePowChallenge(req: IncomingMessage, url: URL, res: ServerResponse): void {
+  const room = url.searchParams.get("room");
+  const peer = url.searchParams.get("peer");
+
+  if (!room || !peer) {
+    res.writeHead(400, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "Missing room or peer" }));
+    return;
+  }
+
+  if (!POW_ENABLED) {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ required: false }));
+    return;
+  }
+
+  if (!powChallengeRateLimiter.check(getPowRateLimitKey(req))) {
+    res.writeHead(429, { "Content-Type": "application/json", "Retry-After": "60" });
+    res.end(JSON.stringify({ error: "Too many proof-of-work challenges" }));
+    return;
+  }
+
+  const challenge = createPowChallenge({
+    room,
+    peer,
+    difficulty: getCurrentPowDifficulty(),
+    secret: POW_SECRET,
+    ttlMs: POW_CHALLENGE_TTL_MS,
+  });
+
+  res.writeHead(200, { "Content-Type": "application/json" });
+  res.end(JSON.stringify({ required: true, ...challenge }));
+}
+
+function verifyRequestPow(
+  solution: PowSolutionInput | null | undefined,
+  room: string,
+  peer: string
+): string | null {
+  if (!POW_ENABLED) return null;
+
+  const result = verifyPowSolution({
+    solution,
+    room,
+    peer,
+    secret: POW_SECRET,
+    markUsed: markPowSolutionUsed,
+  });
+
+  return result.ok ? null : (result.error ?? "Invalid proof-of-work solution");
+}
+
+function getCurrentPowDifficulty(): number {
+  return calculatePowDifficulty({
+    baseDifficulty: POW_BASE_DIFFICULTY,
+    maxDifficulty: POW_MAX_DIFFICULTY,
+    loadStep: POW_LOAD_STEP,
+    activePeers: [...rooms.values()].reduce((acc, s) => acc + s.size, 0),
+    threatLevel: POW_THREAT_LEVEL,
+  });
+}
+
+function markPowSolutionUsed(key: string, expiresAt: number): boolean {
+  cleanupUsedPowSolutions(Date.now());
+  if (usedPowSolutions.has(key)) return false;
+  usedPowSolutions.set(key, expiresAt);
+  return true;
+}
+
+function cleanupUsedPowSolutions(now: number): void {
+  for (const [key, expiresAt] of usedPowSolutions) {
+    if (expiresAt < now) {
+      usedPowSolutions.delete(key);
+    }
+  }
+}
+
+function readIntegerEnv(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (raw === undefined) return fallback;
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function getPowRateLimitKey(req: IncomingMessage): string {
+  if (POW_TRUST_X_FORWARDED_FOR) {
+    const forwardedFor = req.headers["x-forwarded-for"];
+    const firstForwardedFor = Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor;
+    const clientIp = firstForwardedFor?.split(",")[0]?.trim();
+    if (clientIp) return clientIp;
+  }
+
+  return req.socket.remoteAddress ?? "unknown";
+}
 
 /**
  * Read and parse a JSON request body.

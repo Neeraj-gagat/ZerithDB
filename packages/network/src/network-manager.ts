@@ -13,6 +13,7 @@ import { WebSocketTransport } from "./transports/websocket-transport.js";
 import { PollingTransport } from "./transports/polling-transport.js";
 import { NameRegistry } from "./name-registry.js";
 import { MockENSResolver } from "./ens-resolver";
+import { fetchSignalingProofOfWork } from "./pow.js";
 
 export interface WebRtcBufferStats {
   peerCount: number;
@@ -311,10 +312,17 @@ export class NetworkManager extends EventEmitter<NetworkEvents> {
   // ─── Private — Transport setup ────────────────────────────────────────────
 
   private async connectWebSocket(signalingUrl: string, roomId: string): Promise<void> {
-    const url = `${signalingUrl}?room=${encodeURIComponent(roomId)}&peer=${this.localPeerId}`;
+    const proofOfWork = await this.createProofOfWork(signalingUrl, roomId);
+    const url = new URL(signalingUrl);
+    url.searchParams.set("room", roomId);
+    url.searchParams.set("peer", this.localPeerId);
+    if (proofOfWork !== null) {
+      url.searchParams.set("powChallenge", proofOfWork.challenge);
+      url.searchParams.set("powNonce", proofOfWork.nonce);
+    }
 
     const wsTransport = new WebSocketTransport();
-    await wsTransport.connect(url, 5000);
+    await wsTransport.connect(url.toString(), 5000);
 
     this.attachTransport(wsTransport, roomId);
     this.activeTransportType = "websocket";
@@ -323,9 +331,10 @@ export class NetworkManager extends EventEmitter<NetworkEvents> {
 
   private async connectPolling(signalingUrl: string, roomId: string): Promise<void> {
     const httpUrl = this.wsUrlToHttp(signalingUrl);
+    const proofOfWork = await this.createProofOfWork(signalingUrl, roomId);
 
     const pollTransport = new PollingTransport(httpUrl);
-    await pollTransport.connect(roomId, this.localPeerId);
+    await pollTransport.connect(roomId, this.localPeerId, proofOfWork);
 
     this.attachTransport(pollTransport, roomId);
     this.activeTransportType = "polling";
@@ -370,6 +379,14 @@ export class NetworkManager extends EventEmitter<NetworkEvents> {
   }
 
   // ─── Private — Signaling message handling ─────────────────────────────
+
+  private async createProofOfWork(signalingUrl: string, roomId: string) {
+    return fetchSignalingProofOfWork({
+      baseUrl: this.wsUrlToHttp(signalingUrl),
+      roomId,
+      peerId: this.localPeerId,
+    });
+  }
 
   private async handleSignalingMessage(msg: SignalingMessage): Promise<void> {
     // ─── Identity enrichment (Phase 1) ───
