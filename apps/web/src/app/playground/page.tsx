@@ -806,10 +806,18 @@ function ClientCard({
 }) {
   const isBlue = client.color === "blue";
   const textColor = isBlue ? "text-blue-400" : "text-purple-400";
-  const bgColor = isBlue ? "bg-blue-50" : "bg-purple-50";
-  const borderColor = isBlue ? "border-blue-100" : "border-purple-100";
-  const identityBorder = isBlue ? "border-blue-200" : "border-purple-200";
-  const identityText = isBlue ? "text-blue-700" : "text-purple-700";
+  const bgColor = isBlue
+    ? "bg-blue-50 dark:bg-blue-950/30"
+    : "bg-purple-50 dark:bg-purple-950/30";
+  const borderColor = isBlue
+    ? "border-blue-100 dark:border-blue-900"
+    : "border-purple-100 dark:border-purple-900";
+  const identityBorder = isBlue
+    ? "border-blue-200 dark:border-blue-800"
+    : "border-purple-200 dark:border-purple-800";
+  const identityText = isBlue
+    ? "text-blue-700 dark:text-blue-300"
+    : "text-purple-700 dark:text-purple-300";
   const identityIcon = isBlue
     ? "text-blue-500 hover:text-blue-700 hover:bg-blue-100"
     : "text-purple-500 hover:text-purple-700 hover:bg-purple-100";
@@ -818,7 +826,7 @@ function ClientCard({
     : "focus:ring-purple-500/20 focus:border-purple-500";
 
   return (
-    <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden flex flex-col h-[calc(100vh-140px)] min-h-[520px] max-h-[700px]">
+    <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl border border-gray-200 dark:border-zinc-700 overflow-hidden flex flex-col h-[calc(100vh-140px)] min-h-[520px] max-h-[700px] transition-colors duration-300">
       <div className="bg-gray-900 px-4 py-3 flex items-center justify-between border-b border-gray-800">
         <div className="flex items-center gap-2 text-white">
           <Laptop className={`w-4 h-4 ${textColor}`} />
@@ -839,7 +847,7 @@ function ClientCard({
           Identity (Ed25519 Mock)
         </div>
         <div
-          className={`flex items-center gap-2 bg-white rounded-lg px-3 py-2 border ${identityBorder}`}
+          className={`flex items-center gap-2 bg-white dark:bg-zinc-800 rounded-lg px-3 py-2 border ${identityBorder} transition-colors duration-300`}
         >
           <code className={`text-xs ${identityText} font-mono flex-1 truncate`}>
             {client.identity || "(generating...)"}
@@ -857,18 +865,18 @@ function ClientCard({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
+      <div className="flex-1 overflow-y-auto p-6 bg-gray-50 dark:bg-zinc-900 transition-colors duration-300">
         {isLoading ? (
           <div className="flex flex-col gap-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-white p-4 rounded-xl border border-gray-100 animate-pulse">
-                <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
-                <div className="h-3 bg-gray-100 rounded w-1/3" />
+              <div key={i} className="bg-white dark:bg-zinc-800 p-4 rounded-xl border border-gray-100 dark:border-zinc-700 animate-pulse transition-colors duration-300">
+                <div className="h-4 bg-gray-200 dark:bg-zinc-600 rounded w-3/4 mb-2 transition-colors duration-300" />
+                <div className="h-3 bg-gray-100 dark:bg-zinc-700 rounded w-1/3 transition-colors duration-300" />
               </div>
             ))}
           </div>
         ) : client.notes.length === 0 ? (
-          <div className="text-center text-gray-400 mt-20 text-sm">
+          <div className="text-center text-gray-400 dark:text-gray-500 mt-20 text-sm transition-colors duration-300">
             No documents. Type below to create one.
           </div>
         ) : (
@@ -876,10 +884,10 @@ function ClientCard({
             {client.notes.map((note) => (
               <div
                 key={note.id}
-                className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 animate-in fade-in slide-in-from-bottom-2 duration-300"
+                className="bg-white dark:bg-zinc-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-zinc-700 animate-in fade-in slide-in-from-bottom-2 duration-300 transition-colors"
               >
-                <p className="text-gray-800 wrap-break-word whitespace-pre-wrap">{note.text}</p>
-                <p className="text-[10px] text-gray-400 mt-2 uppercase tracking-wider font-mono">
+                <p className="text-gray-800 dark:text-gray-100 wrap-break-word whitespace-pre-wrap transition-colors duration-300">{note.text}</p>
+                <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-2 uppercase tracking-wider font-mono transition-colors duration-300">
                   ID: {note.id} • {new Date(note.timestamp).toLocaleTimeString()}
                 </p>
               </div>
@@ -888,7 +896,7 @@ function ClientCard({
         )}
       </div>
 
-      <div className="p-4 bg-white border-t border-gray-100">
+      <div className="p-4 bg-white dark:bg-zinc-900 border-t border-gray-100 dark:border-zinc-700 transition-colors duration-300">
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -907,11 +915,312 @@ function ClientCard({
           <button
             id={`client-note-submit-${client.id}`}
             type="submit"
-            className="bg-black text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-800 flex items-center gap-2"
+            className="bg-black dark:bg-white text-white dark:text-black px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-800 dark:hover:bg-gray-200 flex items-center gap-2 transition-colors duration-300"
           >
             <Save className="w-4 h-4" /> Save
           </button>
         </form>
+      </div>
+    </div>
+  );
+}
+
+export default function PlaygroundPage() {
+  const [isOnline, setIsOnline] = useState(true);
+  const [syncCount, setSyncCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isPeerConnected, setIsPeerConnected] = useState(false);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const toastTimeouts = useRef<Set<NodeJS.Timeout>>(new Set());
+
+  // Initialize clients
+  const [clients, setClients] = useState<Client[]>(() =>
+    CLIENTS_CONFIG.map((client) => ({
+      ...client,
+      notes: [dummyMessage],
+      input: "",
+      identity: "",
+    }))
+  );
+
+  // Simulate DB initialization and generate identities
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+      setIsPeerConnected(true);
+    }, 1500);
+
+    (async () => {
+      const newClients = await Promise.all(
+        clients.map(async (c) => ({
+          ...c,
+          identity: await generateMockDID(),
+        }))
+      );
+      setClients(newClients);
+    })();
+
+    return () => clearTimeout(timer);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!isOnline) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- simulate peer disconnect immediately
+      setIsPeerConnected(false);
+      return;
+    }
+
+    setIsPeerConnected(false);
+    const timer = setTimeout(() => setIsPeerConnected(true), 1000);
+    return () => clearTimeout(timer);
+  }, [isOnline]);
+
+  const peerStatus = !isOnline
+    ? "offline"
+    : isLoading || !isPeerConnected
+      ? "connecting"
+      : "connected";
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    const timeouts = toastTimeouts.current;
+    return () => {
+      timeouts.forEach(clearTimeout);
+    };
+  }, []);
+
+  const showToast = (message: string, type: "success" | "error" = "success") => {
+    const id = Math.random().toString(36).substring(7);
+    setToasts((prev) => [...prev, { id, message, type }]);
+
+    const timeout = setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+      toastTimeouts.current.delete(timeout);
+    }, 2000);
+
+    toastTimeouts.current.add(timeout);
+  };
+
+  const copyToClipboard = async (text: string) => {
+    if (!text.trim()) {
+      showToast("Failed to copy", "error");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast("Copied to clipboard!", "success");
+    } catch {
+      showToast("Failed to copy", "error");
+    }
+  };
+
+  // Sync logic simulation
+  useEffect(() => {
+    if (!isOnline) return;
+
+    // Merge all notes from all clients
+    const allNotes = clients.flatMap((c) => c.notes);
+    const merged = allNotes.reduce((acc, curr) => {
+      const existing = acc.find((n) => n.id === curr.id);
+      if (!existing) {
+        acc.push(curr);
+      } else if (curr.timestamp > existing.timestamp) {
+        existing.text = curr.text;
+        existing.timestamp = curr.timestamp;
+        existing.senderId = curr.senderId;
+      }
+      return acc;
+    }, [] as Note[]);
+
+    // Update all clients with merged data if changed
+    let hasChanges = false;
+    const newClients = clients.map((client) => {
+      if (JSON.stringify(client.notes) !== JSON.stringify(merged)) {
+        hasChanges = true;
+        return { ...client, notes: merged };
+      }
+      return client;
+    });
+
+    if (hasChanges) {
+      setClients(newClients); // eslint-disable-line react-hooks/set-state-in-effect
+      setSyncCount((prev) => prev + 1);
+    }
+  }, [clients, isOnline]);
+
+  const addNote = (clientId: ClientId, text: string) => {
+    if (!text.trim()) return;
+    const newNote: Note = {
+      id: Math.random().toString(36).substring(7),
+      text,
+      timestamp: Date.now(),
+      senderId: clientId,
+    };
+
+    setClients((prev) =>
+      prev.map((client) =>
+        client.id === clientId
+          ? { ...client, notes: [...client.notes, newNote], input: "" }
+          : client
+      )
+    );
+  };
+
+  const updateInput = (clientId: ClientId, value: string) => {
+    setClients((prev) =>
+      prev.map((client) => (client.id === clientId ? { ...client, input: value } : client))
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-muted/50 flex flex-col font-sans overflow-x-hidden">
+      {/* HEADER - Fixed at top */}
+      <header className="bg-background border-b border-border px-4 md:px-6 h-16 flex items-center justify-between fixed top-0 left-0 right-0 z-50 shadow-sm overflow-hidden">
+        <div className="flex items-center gap-2 md:gap-4 flex-wrap min-w-0">
+          <Link
+            href="/"
+            className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5 text-sm font-medium shrink-0 group"
+          >
+            <ArrowLeft className="w-3.5 h-3.5 shrink-0 group-hover:-translate-x-0.5 transition-transform" />
+            <span className="truncate">Back</span>
+          </Link>
+          <div className="h-4 w-px bg-border shrink-0"></div>
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-8 h-8 flex items-center justify-center shrink-0">
+              <img src="/logo.svg" alt="ZerithDB Logo" className="w-full h-full" />
+            </div>
+            <span className="font-semibold text-foreground text-base md:text-lg tracking-tight truncate">
+              ZerithDB
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 md:gap-4 flex-wrap md:flex-nowrap justify-end min-w-0">
+          <div className="hidden md:flex items-center gap-2 text-xs font-medium text-muted-foreground bg-muted px-3 py-1.5 rounded-full shrink-0">
+            <ArrowRightLeft className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">CRDT Sync: {syncCount}</span>
+          </div>
+
+          <div
+            className={`hidden md:flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-full shrink-0 ${
+              peerStatus === "connected"
+                ? "bg-green-500/10 text-green-600"
+                : peerStatus === "connecting"
+                  ? "bg-yellow-500/10 text-yellow-600"
+                  : "bg-muted text-muted-foreground"
+            }`}
+          >
+            <div
+              className={`w-2 h-2 rounded-full shrink-0 ${
+                peerStatus === "connected"
+                  ? "bg-green-500"
+                  : peerStatus === "connecting"
+                    ? "bg-yellow-500"
+                    : "bg-muted-foreground"
+              }`}
+            />
+            <span className="truncate">
+              {peerStatus === "connected"
+                ? "Peers Connected"
+                : peerStatus === "connecting"
+                  ? "Connecting..."
+                  : "Offline"}
+            </span>
+          </div>
+
+          <button
+            onClick={() => setIsOnline(!isOnline)}
+            className={`flex items-center gap-2 px-3 md:px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-sm border shrink-0 ${
+              isOnline
+                ? "bg-green-500/10 text-green-700 border-green-500/20 hover:bg-green-500/20"
+                : "bg-red-500/10 text-red-700 border-red-500/20 hover:bg-red-500/20"
+            }`}
+          >
+            {isOnline ? (
+              <Wifi className="w-4 h-4 shrink-0" />
+            ) : (
+              <WifiOff className="w-4 h-4 shrink-0" />
+            )}
+            <span className="hidden sm:inline">{isOnline ? "Online" : "Offline"}</span>
+            <span className="sm:hidden">{isOnline ? "Online" : "Offline"}</span>
+          </button>
+
+          <ThemeToggle />
+        </div>
+      </header>
+
+      {/* Spacer to prevent content from hiding under fixed header */}
+      <div className="h-16"></div>
+
+      {/* TITLE SECTION */}
+      <div className="max-w-7xl mx-auto w-full px-4 md:px-6 pt-6 md:pt-8 pb-2">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white tracking-tight transition-colors duration-300">
+          Interactive Playground
+        </h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 transition-colors duration-300">Test CRDT synchronization in real-time</p>
+      </div>
+
+      {/* MAIN PLAYGROUND */}
+      <main className="flex-1 max-w-7xl mx-auto w-full p-4 md:p-6 pt-2 md:pt-4 grid md:grid-cols-2 gap-6 md:gap-8 items-start overflow-x-hidden">
+        {clients.map((client) => (
+          <ClientCard
+            key={client.id}
+            client={client}
+            isLoading={isLoading}
+            onAddNote={addNote}
+            onUpdateInput={updateInput}
+            onCopyIdentity={copyToClipboard}
+          />
+        ))}
+      </main>
+
+      {/* INFO FOOTER */}
+      <div className="max-w-3xl mx-auto text-center pb-12 px-4 md:px-6 overflow-x-hidden">
+        <h3 className="font-semibold text-gray-900 dark:text-white mb-2 transition-colors duration-300">How to test the Playground:</h3>
+        <ul className="text-sm text-gray-500 dark:text-gray-400 flex flex-col gap-2 break-words transition-colors duration-300">
+          {INSTRUCTIONS.map((instruction, index) => (
+            <li key={index} className="break-words">
+              {index + 1}.{" "}
+              {typeof instruction === "string" ? (
+                instruction
+              ) : (
+                <>
+                  Click the{" "}
+                  <strong className={`text-${instruction.highlightColor}-600 whitespace-nowrap`}>
+                    {instruction.highlight}
+                  </strong>{" "}
+                  {instruction.text.replace(instruction.highlight, "").trim()}
+                </>
+              )}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* Toast Notifications */}
+      <div
+        className="fixed bottom-4 md:bottom-6 right-4 md:right-6 flex flex-col gap-2 pointer-events-none max-w-[calc(100%-2rem)] md:max-w-md z-50"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        {toasts.map((toast) => (
+          <div
+            key={toast.id}
+            className={`px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300 pointer-events-auto break-words min-w-0 ${
+              toast.type === "success"
+                ? "bg-black dark:bg-white text-white dark:text-black"
+                : "bg-red-100 dark:bg-red-950/40 text-red-900 dark:text-red-300 border border-red-200 dark:border-red-900"
+            }`}
+          >
+            {toast.type === "success" ? (
+              <Check className="w-4 h-4 text-green-400 shrink-0" />
+            ) : (
+              <span className="text-lg shrink-0">✕</span>
+            )}
+            <span className="text-sm font-medium truncate">{toast.message}</span>
+          </div>
+        ))}
       </div>
     </div>
   );

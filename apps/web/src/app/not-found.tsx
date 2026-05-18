@@ -12,7 +12,7 @@ export default function NotFound() {
   return (
     <main className="flex flex-col min-h-screen bg-background text-foreground transition-colors duration-300 overflow-x-hidden">
       {/* ── HEADER ── */}
-      <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-md">
+      <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-md transition-colors duration-300">
         <div className="container mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
           <Link href="/" className="flex items-center gap-2 group">
             <div className="w-9 h-9 flex items-center justify-center overflow-hidden transition-transform duration-300 group-hover:scale-110">
@@ -28,17 +28,20 @@ export default function NotFound() {
           </Link>
 
           <nav className="hidden sm:flex items-center gap-6 text-sm font-medium text-muted-foreground">
-            <Link href="/docs" className="hover:text-foreground transition-colors">
+            <Link href="/docs" className="hover:text-foreground transition-colors duration-300">
               Docs
             </Link>
-            <Link href="/playground" className="hover:text-foreground transition-colors">
+            <Link
+              href="/playground"
+              className="hover:text-foreground transition-colors duration-300"
+            >
               Playground
             </Link>
             <a
               href="https://github.com/Zerith-Labs/ZerithDB"
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:text-foreground transition-colors"
+              className="hover:text-foreground transition-colors duration-300"
             >
               GitHub
             </a>
@@ -47,7 +50,7 @@ export default function NotFound() {
       </header>
 
       {/* ── 404 HERO ── */}
-      <section className="relative flex flex-1 flex-col items-center justify-center px-4 sm:px-6 py-20 text-center overflow-hidden">
+      <section className="relative flex flex-1 flex-col items-center justify-center px-4 sm:px-6 py-20 text-center overflow-hidden transition-colors duration-300">
         {/* Background: dot grid */}
         <div
           aria-hidden
@@ -61,27 +64,27 @@ export default function NotFound() {
         {/* Background blurred glows */}
         <div
           aria-hidden
-          className="pointer-events-none absolute top-1/4 left-1/2 -translate-x-1/2 w-[500px] h-[500px] rounded-full bg-blue-100/40 dark:bg-blue-900/20 blur-[120px]"
+          className="pointer-events-none absolute top-1/4 left-1/2 -translate-x-1/2 w-[500px] h-[500px] rounded-full bg-blue-100/40 dark:bg-blue-900/20 blur-[120px] transition-colors duration-300"
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute bottom-1/4 left-1/3 w-[300px] h-[300px] rounded-full bg-indigo-100/30 dark:bg-indigo-900/15 blur-[90px]"
+          className="pointer-events-none absolute bottom-1/4 left-1/3 w-[300px] h-[300px] rounded-full bg-indigo-100/30 dark:bg-indigo-900/15 blur-[90px] transition-colors duration-300"
         />
 
         {/* Floating abstract decorative shapes */}
         <div
           aria-hidden
-          className="pointer-events-none absolute top-[8%] left-[6%] w-28 h-28 hidden xl:block rounded-[2.5rem] border border-blue-200/40 bg-white/10 dark:bg-white/5 backdrop-blur-md shadow-[0_16px_40px_rgba(59,130,246,0.10)] animate-[float1_12s_ease-in-out_infinite]"
+          className="pointer-events-none absolute top-[8%] left-[6%] w-28 h-28 hidden xl:block rounded-[2.5rem] border border-blue-200/40 bg-white/10 dark:bg-white/5 backdrop-blur-md shadow-[0_16px_40px_rgba(59,130,246,0.10)] animate-[float1_12s_ease-in-out_infinite] transition-colors duration-300"
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute bottom-[10%] right-[7%] w-36 h-36 hidden xl:block rounded-[3rem] border border-indigo-200/30 bg-white/5 dark:bg-white/[0.03] backdrop-blur-sm shadow-[0_10px_30px_rgba(99,102,241,0.07)] animate-[float2_16s_ease-in-out_infinite]"
+          className="pointer-events-none absolute bottom-[10%] right-[7%] w-36 h-36 hidden xl:block rounded-[3rem] border border-indigo-200/30 bg-white/5 dark:bg-white/[0.03] backdrop-blur-sm shadow-[0_10px_30px_rgba(99,102,241,0.07)] animate-[float2_16s_ease-in-out_infinite] transition-colors duration-300"
         />
 
         {/* Content */}
         <div className="relative z-10 max-w-2xl mx-auto flex flex-col items-center gap-6 animate-[fadeInUp_0.7s_ease-out_both]">
           {/* 404 badge */}
-          <span className="inline-flex items-center gap-2 rounded-full border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/60 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-blue-600 dark:text-blue-400 shadow-sm">
+          <span className="inline-flex items-center gap-2 rounded-full border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/60 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-blue-600 dark:text-blue-400 shadow-sm transition-colors duration-300">
             <span
               className="inline-block w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"
               aria-hidden
@@ -96,18 +99,18 @@ export default function NotFound() {
             </span>
             {/* Subtle glow under the number */}
             <span
-              className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-4/5 h-8 rounded-full bg-blue-400/20 dark:bg-blue-500/10 blur-xl"
+              className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-4/5 h-8 rounded-full bg-blue-400/20 dark:bg-blue-500/10 blur-xl transition-colors duration-300"
               aria-hidden
             />
           </div>
 
           {/* Heading */}
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-foreground text-balance -mt-2">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-foreground text-balance -mt-2 transition-colors duration-300">
             This route doesn&apos;t exist in the mesh
           </h1>
 
           {/* Sub-copy */}
-          <p className="text-base sm:text-lg text-muted-foreground text-balance max-w-md leading-relaxed">
+          <p className="text-base sm:text-lg text-muted-foreground text-balance max-w-md leading-relaxed transition-colors duration-300">
             The page you&apos;re looking for may have been moved, deleted, or never existed.
             Let&apos;s get you back on track.
           </p>
@@ -116,7 +119,7 @@ export default function NotFound() {
           <Link
             href="/"
             id="back-to-home"
-            className="group mt-2 inline-flex items-center gap-2 rounded-xl bg-foreground text-background px-6 py-3 text-sm font-semibold shadow-sm hover:opacity-90 transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0"
+            className="group mt-2 inline-flex items-center gap-2 rounded-xl bg-foreground text-background px-6 py-3 text-sm font-semibold shadow-sm hover:opacity-90 transition-all duration-300 hover:-translate-y-0.5 active:translate-y-0"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -151,9 +154,9 @@ export default function NotFound() {
             <Link
               href="/docs"
               id="goto-docs"
-              className="group flex items-center gap-3 rounded-xl border border-border bg-background hover:bg-muted dark:hover:bg-muted/60 px-5 py-4 text-left transition-all duration-200 hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-sm"
+              className="group flex items-center gap-3 rounded-xl border border-border bg-background hover:bg-muted dark:hover:bg-muted/60 px-5 py-4 text-left transition-all duration-300 hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-sm"
             >
-              <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-border bg-muted group-hover:border-blue-200 group-hover:text-blue-600 transition-colors">
+              <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-border bg-muted group-hover:border-blue-200 group-hover:text-blue-600 transition-colors duration-300">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   width="16"
@@ -170,7 +173,7 @@ export default function NotFound() {
                 </svg>
               </span>
               <div>
-                <p className="text-sm font-semibold text-foreground group-hover:text-blue-600 transition-colors">
+                <p className="text-sm font-semibold text-foreground group-hover:text-blue-600 transition-colors duration-300">
                   Documentation
                 </p>
                 <p className="text-xs text-muted-foreground">Guides &amp; API reference</p>
@@ -180,9 +183,9 @@ export default function NotFound() {
             <Link
               href="/playground"
               id="goto-playground"
-              className="group flex items-center gap-3 rounded-xl border border-border bg-background hover:bg-muted dark:hover:bg-muted/60 px-5 py-4 text-left transition-all duration-200 hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-sm"
+              className="group flex items-center gap-3 rounded-xl border border-border bg-background hover:bg-muted dark:hover:bg-muted/60 px-5 py-4 text-left transition-all duration-300 hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-sm"
             >
-              <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-border bg-muted group-hover:border-blue-200 group-hover:text-blue-600 transition-colors">
+              <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-border bg-muted group-hover:border-blue-200 group-hover:text-blue-600 transition-colors duration-300">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   width="16"
@@ -199,7 +202,7 @@ export default function NotFound() {
                 </svg>
               </span>
               <div>
-                <p className="text-sm font-semibold text-foreground group-hover:text-blue-600 transition-colors">
+                <p className="text-sm font-semibold text-foreground group-hover:text-blue-600 transition-colors duration-300">
                   Playground
                 </p>
                 <p className="text-xs text-muted-foreground">Try ZerithDB live</p>
@@ -211,9 +214,9 @@ export default function NotFound() {
               target="_blank"
               rel="noopener noreferrer"
               id="goto-github"
-              className="group flex items-center gap-3 rounded-xl border border-border bg-background hover:bg-muted dark:hover:bg-muted/60 px-5 py-4 text-left transition-all duration-200 hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-sm"
+              className="group flex items-center gap-3 rounded-xl border border-border bg-background hover:bg-muted dark:hover:bg-muted/60 px-5 py-4 text-left transition-all duration-300 hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-sm"
             >
-              <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-border bg-muted group-hover:border-blue-200 group-hover:text-blue-600 transition-colors">
+              <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-border bg-muted group-hover:border-blue-200 group-hover:text-blue-600 transition-colors duration-300">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   width="16"
@@ -231,7 +234,7 @@ export default function NotFound() {
                 </svg>
               </span>
               <div>
-                <p className="text-sm font-semibold text-foreground group-hover:text-blue-600 transition-colors">
+                <p className="text-sm font-semibold text-foreground group-hover:text-blue-600 transition-colors duration-300">
                   GitHub
                 </p>
                 <p className="text-xs text-muted-foreground">Source &amp; issues</p>
@@ -252,20 +255,23 @@ export default function NotFound() {
           </div>
 
           <div className="flex items-center gap-5 text-xs text-muted-foreground font-medium">
-            <Link href="/" className="hover:text-foreground transition-colors">
+            <Link href="/" className="hover:text-foreground transition-colors duration-300">
               Home
             </Link>
-            <Link href="/docs" className="hover:text-foreground transition-colors">
+            <Link href="/docs" className="hover:text-foreground transition-colors duration-300">
               Docs
             </Link>
-            <Link href="/playground" className="hover:text-foreground transition-colors">
+            <Link
+              href="/playground"
+              className="hover:text-foreground transition-colors duration-300"
+            >
               Playground
             </Link>
             <a
               href="https://github.com/Zerith-Labs/ZerithDB"
               target="_blank"
               rel="noreferrer"
-              className="hover:text-foreground transition-colors"
+              className="hover:text-foreground transition-colors duration-300"
             >
               GitHub
             </a>
@@ -277,7 +283,7 @@ export default function NotFound() {
         </div>
       </footer>
 
-      {/* ── Keyframe animations (CSS-in-JSX via style tag) ── */}
+      {/* ── Keyframe animations ── */}
       <style>{`
         @keyframes fadeInUp {
           from { opacity: 0; transform: translateY(24px); }

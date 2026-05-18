@@ -75,3 +75,7 @@
     text-wrap: balance;
   }
 }
+
+.theme-transition {
+  @apply transition-colors duration-300;
+}
