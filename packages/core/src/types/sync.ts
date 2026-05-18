@@ -1,5 +1,3 @@
-import type { MediaStreamMetadata } from "./network.js";
-
 /** A CRDT update payload to be applied or transmitted to peers. */
 export interface SyncUpdate {
   /** Name of the collection this update belongs to */
@@ -32,6 +30,51 @@ export interface AwarenessState {
   [key: string]: unknown;
 }
 
+/**
+ * A point-in-time snapshot of a single peer's ephemeral state.
+ * Shared over the WebRTC mesh without being persisted to IndexedDB.
+ *
+ * @template TState - The shape of the application-defined ephemeral fields.
+ */
+export interface EphemeralPeerState<
+  TState extends Record<string, unknown> = Record<string, unknown>,
+> {
+  /** Peer ID of the owner */
+  peerId: string;
+  /** The peer's current ephemeral state payload */
+  state: TState;
+  /** Monotonically increasing counter — used to discard out-of-order messages */
+  sequence: number;
+  /** Unix millisecond timestamp of the most recent update */
+  updatedAt: number;
+}
+
+/**
+ * Tuning options for the {@link EphemeralStateManager}.
+ * All fields are optional — sensible defaults are used when omitted.
+ */
+export interface EphemeralConfig {
+  /**
+   * Minimum milliseconds between outbound broadcast messages.
+   * Set to `0` (default) to broadcast immediately on every update.
+   * @default 0
+   */
+  throttleMs?: number;
+
+  /**
+   * Milliseconds of silence before a peer's state is considered stale
+   * and pruned from the local store.
+   * @default 30_000
+   */
+  staleAfterMs?: number;
+
+  /**
+   * How often (in ms) the stale-peer cleanup sweep runs.
+   * @default 5_000
+   */
+  cleanupIntervalMs?: number;
+}
+
 export interface SyncPlugin {
   id: string;
   version: number;
@@ -56,28 +99,74 @@ export interface SyncPlugin {
   ) => Uint8Array | null | Promise<Uint8Array | null>;
 }
 
-export interface ConflictResolver {
-  id: string;
-  version: number;
-  resolveConflict: (
-    collectionName: string,
-    localSnapshot: Uint8Array,
-    incomingUpdate: Uint8Array,
-    fromPeer: string
-  ) =>
-    | Uint8Array
-    | { update: Uint8Array; suggestion?: string }
-    | null
-    | Promise<Uint8Array | { update: Uint8Array; suggestion?: string } | null>;
+// ─── Video-conference types ───────────────────────────────────────────────────
+// Used by the VideoConferenceManager in zerithdb-sdk.
+
+/** Metadata about a single MediaStreamTrack within a published stream. */
+export interface MediaTrackInfo {
+  /** The RTCDataChannel track kind: "audio" or "video" */
+  kind: "audio" | "video";
+  /** Whether this specific track is currently muted */
+  muted: boolean;
+  /** Whether the track is enabled (not forcibly disabled) */
+  enabled?: boolean;
+  /** Optional track label */
+  label?: string;
+  /** Optional track ID */
+  trackId?: string;
+  /** Track readyState if available */
+  readyState?: string;
 }
+
 /**
- * Defines how sync updates are encoded and decoded for network transmission.
- * Swapping the protocol allows for hot-reloading different wire formats
- * (e.g. binary, JSON, encrypted) without restarting the sync engine.
+ * Metadata attached to a published MediaStream.
+ * Exchanged via the ephemeral state channel — never persisted.
  */
-export interface SyncProtocol {
-  readonly name: string;
-  readonly version: string;
-  encode(collectionName: string, update: Uint8Array): string | Uint8Array;
-  decode(data: string | Uint8Array): { collectionName: string; update: Uint8Array } | null;
+export interface MediaStreamMetadata {
+  /** Opaque identifier matching `MediaStream.id` */
+  streamId: string;
+  /** Optional human-readable label (e.g. "camera", "screen") */
+  label?: string;
+  /** Whether the audio tracks in this stream are muted */
+  audioMuted: boolean;
+  /** Whether the video tracks in this stream are muted */
+  videoMuted: boolean;
+  /** Per-track details */
+  tracks: MediaTrackInfo[];
+  /** Arbitrary extra fields for application-specific metadata */
+  [key: string]: unknown;
+}
+
+/**
+ * Input type for publishing a stream — all fields are optional
+ * since they default to the MediaStream's own properties.
+ */
+export type MediaStreamMetadataInput = Partial<Pick<MediaStreamMetadata, "label">> &
+  Record<string, unknown>;
+
+/** Identifies the current active speaker in a video call. */
+export interface ActiveSpeakerState {
+  /** Peer ID of the speaker */
+  peerId: string;
+  /** Unix millisecond timestamp of when this peer became active speaker */
+  updatedAt: number;
+  /** Optional audio level (0–1) at the time of detection */
+  audioLevel?: number;
+}
+
+/**
+ * Full presence state for a video call participant.
+ * Broadcast via ephemeral state — never written to IndexedDB.
+ */
+export interface VideoParticipantState {
+  /** Peer ID of this participant */
+  peerId: string;
+  /** Audio/video mute summary (aggregated across all streams) */
+  muted: { audio: boolean; video: boolean };
+  /** Published streams keyed by streamId */
+  streams: Record<string, MediaStreamMetadata>;
+  /** Unix millisecond timestamp of the last state change */
+  updatedAt: number;
+  /** Set when this participant is the active speaker */
+  activeSpeaker?: ActiveSpeakerState;
 }

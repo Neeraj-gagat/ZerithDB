@@ -20,22 +20,15 @@ export type {
   Document,
   DocumentId,
   CollectionName,
+  CollectionOptions,
   QueryFilter,
   QueryOptions,
   UpdateSpec,
   InsertResult,
   FindResult,
 } from "./types/db.js";
-export type {
-  PeerId,
-  PeerInfo,
-  RoomId,
-  NetworkMessage,
-  MediaStreamKind,
-  MediaTrackMetadata,
-  MediaStreamMetadata,
-} from "./types/network.js";
-export type { Identity, PublicKey, Signature, IAuthManager, AuthEvents } from "./types/auth.js";
+export type { PeerId, PeerInfo, RoomId, NetworkMessage } from "./types/network.js";
+export type { Identity, PublicKey, Signature } from "./types/auth.js";
 
 export type {
   SyncUpdate,
@@ -44,6 +37,10 @@ export type {
   SyncPlugin,
   SyncProtocol,
   EphemeralPeerState,
+  EphemeralConfig,
+  MediaStreamMetadata,
+  MediaStreamMetadataInput,
+  MediaTrackInfo,
   ActiveSpeakerState,
   VideoParticipantState,
 } from "./types/sync.js";

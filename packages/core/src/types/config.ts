@@ -1,3 +1,5 @@
+import type { EphemeralConfig } from "./sync.js";
+
 export interface SyncConfig {
   /**
    * WebSocket URL of the ZerithDB signaling server.
@@ -40,17 +42,11 @@ updateThrottleMs?: number;
  */
 transport?: "auto" | "websocket" | "polling";
 
-/**
- * Configuration options for low-latency ephemeral sync state.
- */
-ephemeral?: EphemeralConfig;
-}
-
-export interface EphemeralConfig {
-  cleanupIntervalMs?: number;
-  throttleMs?: number;
-  staleAfterMs?: number;
-
+  /**
+   * Configuration for the {@link EphemeralStateManager}.
+   * Controls broadcast throttling and stale-peer cleanup timing.
+   */
+  ephemeral?: EphemeralConfig;
 }
 
 export interface AuthConfig {
@@ -88,12 +84,6 @@ export interface NetworkConfig {
    * @default 1000
    */
   reconnectDelay?: number;
-  /** Optional human-readable peer alias */
-  name?: string;
-
-
-  /** Optional ENS identity */
-  ens?: string;
 }
 
 export interface IpfsProvider {

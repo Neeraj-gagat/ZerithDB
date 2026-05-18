@@ -23,7 +23,7 @@ interface User {
   age: number;
 }
 export type UserDoc = Document<User>;
-export const testUser_Id: Assert<UserDoc["_id"], string> = true;
+export const testUser_Id: Assert<UserDoc["_id"], string | number> = true;
 export const testUser_Name: Assert<UserDoc["name"], string> = true;
 export const testUser_Age: Assert<UserDoc["age"], number> = true;
 
@@ -34,7 +34,7 @@ export const testFilter_CreatedAt: Assert<keyof UserFilter & "_createdAt", "_cre
 
 // 3. Schemaless Collection Behavior (Defaults)
 export type AnonDoc = Document;
-export const testAnon_Id: Assert<AnonDoc["_id"], string> = true;
+export const testAnon_Id: Assert<AnonDoc["_id"], string | number> = true;
 export const testAnon_Name: Assert<AnonDoc["anything"], any> = true;
 
 // 4. Optional Field Preservation

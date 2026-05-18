@@ -29,7 +29,7 @@ describe("DbClient — CollectionClient", () => {
       const result = await col.insert({ text: "hello" });
       expect(result.id).toBeDefined();
       expect(typeof result.id).toBe("string");
-      expect(result.id.length).toBeGreaterThan(0);
+      expect(String(result.id).length).toBeGreaterThan(0);
     });
 
     it("should securely persist the inserted document in the database so that subsequent find() queries can retrieve it", async () => {

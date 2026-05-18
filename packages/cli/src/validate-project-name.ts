@@ -19,8 +19,8 @@ export function validateProjectName(name: string): void {
   if (!validForNewPackages) {
     console.error(chalk.red(`\n✖  Invalid project name: `) + chalk.bold.red(`"${name}"`));
 
-    errors?.forEach((err) => console.error(chalk.red(`   • ${err}`)));
-    warnings?.forEach((warn) => console.warn(chalk.yellow(`   ⚠  ${warn}`)));
+    errors?.forEach((err: string) => console.error(chalk.red(`   • ${err}`)));
+    warnings?.forEach((warn: string) => console.warn(chalk.yellow(`   ⚠  ${warn}`)));
 
     console.error(chalk.gray(`\n   Tip: use only lowercase letters, numbers, and hyphens.`));
     console.error(chalk.gray(`   Example: `) + chalk.cyan(`npx zerithdb init my-cool-app`) + `\n`);
