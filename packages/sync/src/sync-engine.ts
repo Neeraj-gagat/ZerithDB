@@ -5,12 +5,11 @@ import { EventEmitter, ValidatorRegistry } from "zerithdb-core";
 import type { ZerithDBConfig, SyncState, SyncPlugin } from "zerithdb-core";
 import type { DbClient } from "zerithdb-db";
 import type { NetworkManager } from "zerithdb-network";
-import { lwwMerge } from "./merge/lww.js";
-import { crdtMerge } from "./merge/crdt.js";
+import type { SyncProtocol } from "zerithdb-core";
 import { InboxQueue } from "./queue/InboxQueue.js";
 import { OutboxQueue } from "./queue/OutboxQueue.js";
-import { createQueueStorage } from "./queue/queue-db.js";
-import { bytesToBase64, base64ToBytes } from "zerithdb-utils";
+import { EphemeralStateManager } from "./ephemeral-state.js";
+import { DefaultSyncProtocol } from "./protocol.js";
 
 type SyncEvents = {
   "state:change": SyncState;
@@ -29,15 +28,12 @@ type SyncEvents = {
  * Integrates Inbox/Outbox queues to handle offline-first mutation logging.
  */
 export class SyncEngine extends EventEmitter<SyncEvents> {
-  /** Low-latency, non-persistent metadata sync for presence, media, and UI state. */
-  readonly ephemeral: EphemeralStateManager;
-
   private readonly docs = new Map<string, Y.Doc>();
   private readonly persistences = new Map<string, IndexeddbPersistence>();
   private readonly awarenesses = new Map<string, awarenessProtocol.Awareness>();
   readonly outbox: OutboxQueue<Uint8Array>;
   readonly inbox: InboxQueue<Uint8Array>;
-
+  public readonly ephemeral: EphemeralStateManager;
   private _enabled = false;
   private _state: SyncState = {
     synced: false,
@@ -50,7 +46,8 @@ export class SyncEngine extends EventEmitter<SyncEvents> {
   private pendingUpdates = new Map<string, Uint8Array[]>();
 
   private syncTimer: any = null;
-  private syncTimerIsRaf = false;
+  private syncTimerIsRaf: boolean = false;
+  private protocol: SyncProtocol = new DefaultSyncProtocol();
 
   constructor(
     private readonly config: ZerithDBConfig,
@@ -103,7 +100,6 @@ export class SyncEngine extends EventEmitter<SyncEvents> {
     this.network.on("message", this.onPeerUpdate);
     this.network.on("peer:connected", this.onPeerConnected);
     this.network.on("peer:disconnected", this.onPeerDisconnected);
-    this.ephemeral.enable();
     this.updateState({ synced: true, connectedPeers: this.network.connectedPeerCount });
     void this.flushOutbox();
 
@@ -118,8 +114,7 @@ export class SyncEngine extends EventEmitter<SyncEvents> {
 
     this.network.off("message", this.onPeerUpdate);
     this.network.off("peer:connected", this.onPeerConnected);
-  this.network.off("peer:disconnected", this.onPeerDisconnected);
-    this.ephemeral.disable();
+    this.network.off("peer:disconnected", this.onPeerDisconnected);
     this.updateState({ synced: false, connectedPeers: 0 });
 
   registerPlugin(plugin: SyncPlugin): void {
@@ -147,6 +142,19 @@ export class SyncEngine extends EventEmitter<SyncEvents> {
     });
   }
 
+  /**
+   * Update the sync protocol at runtime.
+   * This allows hot-reloading different wire formats or conflict resolution
+   * rules without dropping existing peer connections.
+   */
+  setProtocol(protocol: SyncProtocol): void {
+    console.log(
+      `[SyncEngine] Switching protocol: ${this.protocol.name} v${this.protocol.version} -> ${protocol.name} v${protocol.version}`
+    );
+    this.protocol = protocol;
+  }
+
+  /** Current sync state snapshot */
   get state(): Readonly<SyncState> {
     return this._state;
   }
@@ -294,7 +302,6 @@ export class SyncEngine extends EventEmitter<SyncEvents> {
     }
 
     this.disable();
-    this.ephemeral.dispose();
     if (this.syncTimer) {
       if (this.syncTimerIsRaf && typeof window !== "undefined" && window.cancelAnimationFrame) {
         window.cancelAnimationFrame(this.syncTimer);
@@ -351,7 +358,6 @@ export class SyncEngine extends EventEmitter<SyncEvents> {
 
   private flushUpdates(): void {
     this.syncTimer = null;
-    this.syncTimerIsRaf = false;
     for (const [collectionName, updates] of this.pendingUpdates.entries()) {
       const merged = Y.mergeUpdates(updates);
       void this.handleLocalUpdate(collectionName, merged);
@@ -365,11 +371,6 @@ export class SyncEngine extends EventEmitter<SyncEvents> {
       const payloadStr =
         typeof msg.payload === "string" ? msg.payload : new TextDecoder().decode(msg.payload);
 
-      const offer = JSON.parse(payloadStr) as {
-        pluginUrl: string;
-        version: number;
-      };
-
       this.loadPlugin(offer.pluginUrl)
         .then(() => {
           this.network.sendTo(msg.from, {
@@ -379,7 +380,7 @@ export class SyncEngine extends EventEmitter<SyncEvents> {
         })
         .catch(() => {
           console.warn(
-            `Peer ${msg.from} failed to upgrade. Disconnecting is currently not natively supported in NetworkManager's public API directly from SyncEngine, but we will ignore their updates.`
+            `Peer ${msg.from} failed to upgrade. Ignoring their future updates.`
           );
         });
 
@@ -392,10 +393,7 @@ export class SyncEngine extends EventEmitter<SyncEvents> {
 
     if (msg.type !== "sync-update" && msg.type !== "awareness-update") return;
 
-    const payload = typeof msg.payload === "string" ? base64ToBytes(msg.payload) : msg.payload;
-
-    const decoded = this.decodeMessage(payload);
-
+    const decoded = this.protocol.decode(msg.payload);
     if (decoded === null) return;
 
     if (msg.type === "sync-update") {
@@ -426,7 +424,6 @@ export class SyncEngine extends EventEmitter<SyncEvents> {
       for (const plugin of this.plugins.values()) {
         if (plugin.onBeforeSendUpdate) {
           finalUpdate = await plugin.onBeforeSendUpdate(collectionName, finalUpdate);
-
           if (!finalUpdate) return;
         }
       }
@@ -448,7 +445,7 @@ export class SyncEngine extends EventEmitter<SyncEvents> {
 
       this.network.broadcast({
         type: "sync-update",
-        payload: this.encodeMessage(collectionName, finalUpdate),
+        payload: this.protocol.encode(collectionName, finalUpdate),
       });
 
       await this.outbox.acknowledge(mutation.id);
@@ -532,70 +529,11 @@ export class SyncEngine extends EventEmitter<SyncEvents> {
     for (const mutation of pending) {
       this.network.broadcast({
         type: mutation.type,
-        payload: this.encodeMessage(mutation.collection, mutation.payload),
+        payload: this.protocol.encode(mutation.collection, mutation.payload),
       });
 
       await this.outbox.acknowledge(mutation.id);
     }
-  }
-
-  private encodeMessage(collectionName: string, update: Uint8Array): string {
-    const nameBytes = new TextEncoder().encode(collectionName);
-
-    const header = new Uint8Array(2);
-    header[0] = (nameBytes.length >> 8) & 0xff;
-    header[1] = nameBytes.length & 0xff;
-
-    const combined = new Uint8Array(2 + nameBytes.length + update.length);
-
-    combined.set(header, 0);
-    combined.set(nameBytes, 2);
-    combined.set(update, 2 + nameBytes.length);
-
-    return bytesToBase64(combined);
-  }
-
-  private decodeMessage(bytes: Uint8Array): {
-    collectionName: string;
-    update: Uint8Array;
-  } | null {
-    try {
-      if (bytes.length < 2) return null;
-
-      const nameLen = (bytes[0]! << 8) | bytes[1]!;
-
-      if (bytes.length < 2 + nameLen) return null;
-
-      const nameBytes = bytes.slice(2, 2 + nameLen);
-      const update = bytes.slice(2 + nameLen);
-
-      return {
-        collectionName: new TextDecoder().decode(nameBytes),
-        update,
-      };
-    } catch {
-      return null;
-    }
-  }
-
-  private compareVectorClocks(v1: Record<string, number>, v2: Record<string, number>): "less" | "greater" | "equal" | "concurrent" {
-    let v1Greater = false;
-    let v2Greater = false;
-
-    const allKeys = new Set([...Object.keys(v1), ...Object.keys(v2)]);
-
-    for (const key of allKeys) {
-      const c1 = v1[key] || 0;
-      const c2 = v2[key] || 0;
-
-      if (c1 > c2) v1Greater = true;
-      if (c2 > c1) v2Greater = true;
-    }
-
-    if (v1Greater && v2Greater) return "concurrent";
-    if (v1Greater) return "greater";
-    if (v2Greater) return "less";
-    return "equal";
   }
 
   private updateState(partial: Partial<SyncState>): void {

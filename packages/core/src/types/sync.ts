@@ -54,13 +54,15 @@ export interface AwarenessState {
   [key: string]: unknown;
 }
 
-/** Low-latency, non-persistent peer state shared over the WebRTC mesh. */
-export interface EphemeralPeerState<
-  TState extends Record<string, unknown> = Record<string, unknown>,
-> {
+/** Low-latency ephemeral state for a single peer (non-persistent). */
+export interface EphemeralPeerState<TState extends Record<string, unknown> = Record<string, unknown>> {
+  /** The peer ID of the peer this state belongs to */
   peerId: string;
+  /** The state object itself */
   state: TState;
+  /** Incrementing sequence number for conflict-free ordering */
   sequence: number;
+  /** Timestamp of the last update in Unix milliseconds */
   updatedAt: number;
 }
 
@@ -88,46 +90,17 @@ export interface SyncPlugin {
   ) => Uint8Array | null | Promise<Uint8Array | null>;
 }
 
-
-
-export interface MediaStreamTrackMetadata {
-  trackId: string;
-  kind: "audio" | "video";
-  label: string;
-  enabled: boolean;
-  muted: boolean;
-  readyState: string;
+/**
+ * Defines how sync updates are encoded and decoded for network transmission.
+ * Swapping the protocol allows for hot-reloading different wire formats
+ * (e.g. binary, JSON, encrypted) without restarting the sync engine.
+ */
+export interface SyncProtocol {
+  readonly name: string;
+  readonly version: string;
+  encode(collectionName: string, update: Uint8Array): string | Uint8Array;
+  decode(data: string | Uint8Array): { collectionName: string; update: Uint8Array } | null;
 }
-
-export interface MediaStreamMetadata {
-  streamId: string;
-  peerId: string;
-  kind: "camera" | "screen" | "custom";
-  audioMuted: boolean;
-  videoMuted: boolean;
-  tracks: MediaStreamTrackMetadata[];
-  updatedAt: number;
-}
-
-export type MediaStreamKind = "camera" | "screen" | "custom";
-
-export interface MediaStreamMetadata {
-  streamId: string;
-  peerId: string;
-  kind: MediaStreamKind;
-  audioMuted: boolean;
-  videoMuted: boolean;
-  tracks: Array<{
-    trackId: string;
-    kind: "audio" | "video";
-    label: string;
-    enabled: boolean;
-    muted: boolean;
-    readyState: string;
-  }>;
-  updatedAt: number;
-}
-
 export interface ActiveSpeakerState {
   peerId: string;
   audioLevel?: number;

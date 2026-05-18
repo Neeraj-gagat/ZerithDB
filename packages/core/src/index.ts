@@ -26,14 +26,14 @@ export type {
   FindResult,
   CollectionOptions,
 } from "./types/db.js";
-export type { PeerId, PeerInfo, RoomId, NetworkMessage } from "./types/network.js";
-export type { Identity, PublicKey, Signature } from "./types/auth.js";
-
+export type { PeerId, PeerInfo, RoomId, NetworkMessage, MediaStreamMetadata, MediaStreamKind } from "./types/network.js";
 export type { Identity, PublicKey, Signature } from "./types/auth.js";
 export type {
   SyncUpdate,
   SyncState,
   AwarenessState,
+  SyncPlugin,
+  SyncProtocol,
   EphemeralPeerState,
   MediaStreamMetadata,
   ActiveSpeakerState,

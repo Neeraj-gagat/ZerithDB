@@ -49,12 +49,15 @@ transport?: "auto" | "websocket" | "polling";
   transport?: "auto" | "websocket" | "polling";
 
   /**
-   * Configuration for high-latency or low-latency non-persistent ephemeral state.
+   * Configuration options for the ephemeral (non-persistent) state sync channel.
    */
   ephemeral?: {
+    /** Interval in ms for cleaning up stale peer states. @default 5000 */
     cleanupIntervalMs?: number;
-    throttleMs?: number;
+    /** Time in ms before a peer's state is considered stale. @default 30000 */
     staleAfterMs?: number;
+    /** Minimum ms between outgoing broadcasts (throttle). @default 0 */
+    throttleMs?: number;
   };
 }
 
@@ -83,6 +86,16 @@ export interface DebugConfig {
 
 export interface NetworkConfig {
   /**
+   * Human-readable alias for this peer in the mesh.
+   */
+  name?: string;
+
+  /**
+   * Optional ENS identity to attach to this peer.
+   */
+  ens?: string;
+
+  /**
    * Whether to automatically reconnect when a peer disconnects.
    * @default true
    */
@@ -93,70 +106,6 @@ export interface NetworkConfig {
    * @default 1000
    */
   reconnectDelay?: number;
-}
-
-export interface IpfsProvider {
-  upload(data: Blob | Uint8Array): Promise<string>;
-  fetch(cid: string): Promise<Blob>;
-}
-
-export interface IpfsConfig {
-  /**
-   * Enable or disable IPFS/Filecoin integration.
-   * @default false
-   */
-  enabled?: boolean;
-
-  /**
-   * The base URL of the IPFS HTTP API endpoint for uploading files.
-   * Typically 'http://localhost:5001' or a remote pinning/gateway API.
-   * @default "http://localhost:5001"
-   */
-  apiUrl?: string;
-
-  /**
-   * The base URL of the IPFS gateway for fetching files.
-   * Typically 'https://ipfs.io/ipfs/' or a local gateway.
-   * @default "https://ipfs.io/ipfs/"
-   */
-  gatewayUrl?: string;
-
-  /**
-   * Threshold in bytes above which a Blob or Uint8Array is offloaded to IPFS.
-   * If not set or 0, any Blob/Uint8Array will be uploaded.
-   * @default 0
-   */
-  sizeThreshold?: number;
-
-  /**
-   * Optional custom upload/fetch implementation, useful for tests or custom pinning services.
-   */
-  provider?: IpfsProvider;
-}
-
-export interface ConflictResolverConfig {
-  /**
-   * Enable AI-driven semantic conflict resolution.
-   * @default false
-   */
-  enabled?: boolean;
-
-  /**
-   * Optional local model name used by the reference resolver.
-   */
-  modelName?: string;
-
-  /**
-   * Minimum confidence required before the resolver auto-applies a merge.
-   * Conflicts below this threshold are flagged for review.
-   * @default 0.7
-   */
-  autoApplyThreshold?: number;
-
-  /**
-   * Called when a conflict is flagged for review.
-   */
-  onConflict?: (collectionName: string, suggestion: string) => void;
 }
 
 export interface ZerithDBConfig {
