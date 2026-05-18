@@ -20,6 +20,36 @@ export interface PeerInfo {
 
   /** Connection established timestamp in Unix milliseconds */
   connectedAt: number;
+  /** 
+   * Total bytes received from this peer (their "Give").
+   * Represents the peer's contribution to the local node's data sync.
+   * @default 0
+   * @remarks 
+   * This is the numerator in the reputation calculation. A healthy peer
+   * should have a reasonable amount of bytes downloaded relative to uploaded.
+   */
+  bytesDownloaded: number;
+
+  /** 
+   * Total bytes sent to this peer (our "Give" / their "Take").
+   * Represents the bandwidth cost this peer incurs on the local node.
+   * @default 0
+   * @remarks 
+   * This is the denominator in the reputation calculation. High upload
+   * with zero download indicates a leeching peer.
+   */
+  bytesUploaded: number;
+
+  /** 
+   * Calculated reputation score based on the Give/Take ratio (bytesDownloaded / bytesUploaded).
+   * @default 1.0
+   * @remarks 
+   * Used for network leech protection. 
+   * - 1.0: Perfect or grace-period reputation.
+   * - < 0.5: Peer is throttled (messages are delayed and queued).
+   * - < 0.05: Peer is considered a severe leech. If they have consumed > 5MB, they are forcibly disconnected to protect bandwidth.
+   */
+  reputation: number;
 }
 
 /** A message exchanged between peers over the WebRTC data channel. */
@@ -63,3 +93,4 @@ export interface MediaStreamMetadata {
   updatedAt: number;
   [key: string]: unknown;
 }
+
