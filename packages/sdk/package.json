@@ -11,7 +11,7 @@
     "sync",
     "database"
   ],
-  "homepage": "https://zerithdb.dev",
+  "homepage": "https://zerithdb.netlify.app",
   "repository": {
     "type": "git",
     "url": "https://github.com/Zerith-Labs/ZerithDB.git",

@@ -502,6 +502,9 @@ importers:
       prompts:
         specifier: ^2.4.2
         version: 2.4.2
+      ws:
+        specifier: ^8.18.0
+        version: 8.20.0
       validate-npm-package-name:
         specifier: ^8.0.0
         version: 8.0.0
