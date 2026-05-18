@@ -682,6 +682,33 @@ export class DbClient {
     }
   }
 
+  async importSnapshot(snapshot: BackupSnapshot, options: { overwrite?: boolean } = {}): Promise<void> {
+    return wrapIDBOperation(
+      ErrorCode.DB_WRITE_FAILED,
+      "Failed to import local backup snapshot",
+      async () => {
+        if (!snapshot || snapshot.format !== "zerithdb.local-backup.v1") {
+          throw new ZerithDBError(
+            ErrorCode.DB_INIT_FAILED,
+            "Invalid snapshot format. Must be 'zerithdb.local-backup.v1'"
+          );
+        }
+
+        const overwrite = options.overwrite ?? true;
+
+        for (const [name, documents] of Object.entries(snapshot.collections)) {
+          const table = this.dexie.ensureCollection(name);
+          if (overwrite) {
+            await table.clear();
+          }
+          if (documents.length > 0) {
+            await table.bulkPut(documents);
+          }
+        }
+      }
+    );
+  }
+
   async dispose(): Promise<void> {
     // Remove all EventEmitter listeners before closing to prevent memory leaks
     // from dangling references to this DbClient instance after disposal.

@@ -160,3 +160,49 @@ describe("cloud backup targets", () => {
     expect(result.location).toBe("/zerithdb/backup.json");
   });
 });
+
+describe("importSnapshot", () => {
+  it("imports a valid snapshot and populates collections correctly", async () => {
+    const db = createDb();
+
+    const snapshot = {
+      format: "zerithdb.local-backup.v1" as const,
+      appId: "import-test-app",
+      generatedAt: "2026-05-15T00:00:00.000Z",
+      collections: {
+        todos: [
+          {
+            _id: "doc-1",
+            _createdAt: 1716000000000,
+            _updatedAt: 1716000000000,
+            text: "imported todo 1",
+            done: false,
+          },
+          {
+            _id: "doc-2",
+            _createdAt: 1716000000000,
+            _updatedAt: 1716000000000,
+            text: "imported todo 2",
+            done: true,
+          },
+        ],
+      },
+    };
+
+    await db.importSnapshot(snapshot);
+
+    const todos = db.collection("todos");
+    const docs = await todos.find();
+
+    expect(docs).toHaveLength(2);
+    const doc1 = docs.find((d) => d._id === "doc-1");
+    const doc2 = docs.find((d) => d._id === "doc-2");
+    
+    expect(doc1).toBeDefined();
+    expect(doc1?.text).toBe("imported todo 1");
+    expect(doc2).toBeDefined();
+    expect(doc2?.text).toBe("imported todo 2");
+
+    await db.dispose();
+  });
+});

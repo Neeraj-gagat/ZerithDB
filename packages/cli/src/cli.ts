@@ -10,9 +10,10 @@ import { formatCommand } from "./commands/format.js";
 import { maintenanceCommand } from "./commands/maintenance.js";
 import { purgeCommand } from "./purge.js";
 import { generateCommand } from "./commands/generate.js";
+import { inferCommand } from "./commands/infer.js";
+import { migrateCommand } from "./commands/migrate.js";
 
 import { checkConnectivity } from "./checkConnectivity.js";
-import { generateCommand } from "./commands/generate.js";
 
 const VERSION = "0.2.0";
 
@@ -60,7 +61,33 @@ async function main() {
     .description("Generate ZerithDB validation schemas from a Prisma schema")
     .option("-s, --schema <schema>", "Path to schema.prisma file", "./prisma/schema.prisma")
     .option("-o, --out <out>", "Path to output generated TypeScript file", "./src/zerith-schemas.ts")
-    .action(generateCommand);``
+    .action(generateCommand);
+
+  // PURGE
+  program
+    .command("purge")
+    .description("Purge all local ZerithDB data stored in the home directory")
+    .action(purgeCommand);
+
+  program
+    .command("infer <path>")
+    .description("Scan JSON and infer TypeScript & Zod schemas")
+    .option("--out <dir>", "Output directory")
+    .option("--name <schemaName>", "Schema name")
+    .option("--zod-only", "Generate only Zod schemas")
+    .option("--ts-only", "Generate only TypeScript interfaces")
+    .option("--pretty", "Format output with Prettier")
+    .action(inferCommand);
+
+  program
+    .command("migrate <source>")
+    .description("Migrate database schema and records from legacy providers to ZerithDB local-first format")
+    .option("-u, --url <url>", "Supabase URL / Firebase Project URL")
+    .option("-k, --key <key>", "Supabase API key / service key")
+    .option("-t, --table <tables>", "Specific table(s) to migrate, comma-separated")
+    .option("-a, --app <appId>", "ZerithDB App ID to embed in snapshot", "zerithdb-migrated-app")
+    .option("-o, --output <output>", "Output JSON file path", "zerithdb-migration-payload.json")
+    .action(migrateCommand);
 
   program.parse(process.argv);
 }
