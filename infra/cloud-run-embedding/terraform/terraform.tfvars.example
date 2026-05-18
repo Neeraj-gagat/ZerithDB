@@ -1,0 +1,14 @@
+# Copy this file to terraform.tfvars and fill in your values
+# DO NOT commit terraform.tfvars to version control
+
+gcp_project_id        = "your-gcp-project-id"
+gcp_region            = "asia-south1"
+service_name          = "zerithdb-embedding-service"
+image_tag             = "latest"
+embedding_model       = "all-MiniLM-L6-v2"
+memory                = "2Gi"
+cpu                   = "2"
+max_instances         = 3
+min_instances         = 0
+concurrency           = 10
+allow_unauthenticated = false

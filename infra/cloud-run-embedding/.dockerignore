@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.git/
+.terraform/
+*.tfstate*
+terraform/
+README.md
