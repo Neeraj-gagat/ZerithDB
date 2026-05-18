@@ -46,7 +46,7 @@ export class SyncEngine extends EventEmitter<SyncEvents> {
   private pendingUpdates = new Map<string, Uint8Array[]>();
   private syncTimer: any = null;
   private syncTimerIsRaf: boolean = false;
-  private protocol: SyncProtocol = new DefaultSyncProtocol();
+  private isFlushing = false;
 
   constructor(
     private readonly config: ZerithDBConfig,
@@ -455,14 +455,28 @@ doc.on("update", (update: Uint8Array, origin: unknown) => {
   private async flushOutbox(): Promise<void> {
     if (!this._enabled) return;
     if (this.network.connectedPeerCount === 0) return;
+    if (this.isFlushing) return;
 
-    const pending = await this.outbox.getPending();
-    for (const mutation of pending) {
-      this.network.broadcast({
-        type: "sync-update",
-        payload: this.encodeMessage(mutation.collection, mutation.payload),
-      });
-      await this.outbox.acknowledge(mutation.id);
+    this.isFlushing = true;
+    try {
+      while (true) {
+        if (!this._enabled || this.network.connectedPeerCount === 0) break;
+
+        const pending = await this.outbox.getPending();
+        if (pending.length === 0) break;
+
+        for (const mutation of pending) {
+          if (!this._enabled || this.network.connectedPeerCount === 0) break;
+
+          this.network.broadcast({
+            type: mutation.type,
+            payload: this.encodeMessage(mutation.collection, mutation.payload),
+          });
+          await this.outbox.acknowledge(mutation.id);
+        }
+      }
+    } finally {
+      this.isFlushing = false;
     }
   }
 

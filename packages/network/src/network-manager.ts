@@ -194,6 +194,10 @@ export class NetworkManager extends EventEmitter<NetworkEvents> {
    * - `"polling"`: HTTP long-polling only.
    */
   async connect(roomId: string): Promise<void> {
+    if (this.reconnectTimer !== null) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
     const urls = this.getSignalingUrls();
 
     for (let i = 0; i < urls.length; i++) {
@@ -925,6 +929,9 @@ export class NetworkManager extends EventEmitter<NetworkEvents> {
   }
 
   private scheduleReconnect(roomId: string): void {
+    if (this.reconnectTimer !== null) {
+      clearTimeout(this.reconnectTimer);
+    }
     const urls = this.getSignalingUrls();
     const delay = this.config.network?.reconnectDelay ?? 1000;
     const backoff = Math.min(delay * 2 ** this.reconnectAttempts, 30_000);
