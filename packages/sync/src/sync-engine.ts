@@ -5,12 +5,7 @@ import type { ZerithDBConfig, SyncState, SyncPlugin, IncomingPeerDataMessage } f
 import { EventEmitter } from "zerithdb-core";
 import type { DbClient } from "zerithdb-db";
 import type { NetworkManager } from "zerithdb-network";
-import type { SyncProtocol } from "zerithdb-core";
-import { InboxQueue } from "./queue/InboxQueue.js";
-import { OutboxQueue } from "./queue/OutboxQueue.js";
-import { EphemeralStateManager } from "./ephemeral-state.js";
-import { bytesToBase64, base64ToBytes } from "zerithdb-utils";
-import { DefaultSyncProtocol } from "./protocol.js";
+import { type SyncProtocol, DefaultProtocol } from "./protocol.js";
 
 type SyncEvents = {
   "state:change": SyncState;
@@ -33,10 +28,8 @@ type SyncEvents = {
 export class SyncEngine extends EventEmitter<SyncEvents> {
   private readonly docs = new Map<string, Y.Doc>();
   private readonly persistences = new Map<string, IndexeddbPersistence>();
-  private readonly awarenesses = new Map<string, awarenessProtocol.Awareness>();
-  readonly outbox: OutboxQueue<Uint8Array>;
-  readonly inbox: InboxQueue<Uint8Array>;
-  public readonly ephemeral: EphemeralStateManager;
+  private readonly protocols = new Map<string, SyncProtocol>();
+  private activeProtocol: SyncProtocol;
   private _enabled = false;
   
   private _state: SyncState = { synced: false, pendingUpdates: 0, connectedPeers: 0 };
@@ -61,27 +54,11 @@ export class SyncEngine extends EventEmitter<SyncEvents> {
     this.ephemeral = new EphemeralStateManager(config, network);
 
     this.onPeerUpdate = this.onPeerUpdate.bind(this);
-    this.onLocalMutation = this.onLocalMutation.bind(this);
-    this.onPeerConnected = this.onPeerConnected.bind(this);
-    this.onPeerDisconnected = this.onPeerDisconnected.bind(this);
 
-    this.outbox.onChange(() => {
-      void this.refreshPendingCount();
-    });
-
-    if (typeof document !== "undefined") {
-      document.addEventListener("visibilitychange", this.handleVisibilityChange);
-    }
-
-    // [UCAN] Get the local app owner's DID
-    const identity = this.auth.identity;
-    if (!identity) {
-      throw new ZerithDBError(
-        ErrorCode.AUTH_KEY_NOT_FOUND,
-        "SyncEngine requires a signed‑in identity. Call auth.signIn() before enabling sync."
-      );
-    }
-    this.appOwnerDid = identity.did;
+    // Initialize default protocol
+    const defaultProto = new DefaultProtocol();
+    this.protocols.set(defaultProto.name, defaultProto);
+    this.activeProtocol = defaultProto;
   }
 
   private handleVisibilityChange = (): void => {
@@ -175,6 +152,29 @@ export class SyncEngine extends EventEmitter<SyncEvents> {
     return this._state;
   }
 
+  /**
+   * Register a new sync protocol for hot-reloading.
+   */
+  registerProtocol(protocol: SyncProtocol): void {
+    this.protocols.set(protocol.name, protocol);
+  }
+
+  /**
+   * Switch the active sync protocol at runtime.
+   * All future outgoing messages will use this protocol.
+   */
+  useProtocol(name: string): void {
+    const proto = this.protocols.get(name);
+    if (!proto) {
+      throw new Error(`Protocol "${name}" not found. Register it first.`);
+    }
+    this.activeProtocol = proto;
+  }
+
+  /**
+   * Get or create the Yjs document for a collection.
+   * Documents are persisted to IndexedDB via y-indexeddb.
+   */
   getDoc(collectionName: string): Y.Doc {
     if (this.docs.has(collectionName)) {
       return this.docs.get(collectionName)!;
@@ -192,8 +192,14 @@ doc.on("update", (update: Uint8Array, origin: unknown) => {
   if (origin === "remote") return; // Don't echo back remote updates
 
     doc.on("update", (update: Uint8Array, origin: unknown) => {
-      if (origin === "remote") return;
-      this.queueUpdate(collectionName, update);
+      if (origin === "remote") return; // Don't echo back remote updates
+      if (!this._enabled) return;
+
+      this.emit("update:local", { collectionName, update });
+      this.network.broadcast({
+        type: "sync-update",
+        payload: this.activeProtocol.encode({ collectionName, update }),
+      });
     });
 
     this.docs.set(collectionName, doc);
@@ -318,72 +324,7 @@ doc.on("update", (update: Uint8Array, origin: unknown) => {
   private queueUpdate(collectionName: string, update: Uint8Array): void {
     let updates = this.pendingUpdates.get(collectionName);
 
-    if (!updates) {
-      updates = [];
-      this.pendingUpdates.set(collectionName, updates);
-    }
-
-    updates.push(update);
-
-    if (
-      !this.syncTimer &&
-      (typeof document === "undefined" || document.visibilityState !== "hidden")
-    ) {
-      if (typeof window !== "undefined" && window.requestAnimationFrame) {
-        this.syncTimer = window.requestAnimationFrame(() => this.flushUpdates());
-
-        this.syncTimerIsRaf = true;
-      } else {
-        this.syncTimer = setTimeout(() => this.flushUpdates(), 50);
-        this.syncTimerIsRaf = false;
-      }
-    }
-  }
-
-  private flushUpdates(): void {
-    this.syncTimer = null;
-    for (const [collectionName, updates] of this.pendingUpdates.entries()) {
-      const merged = Y.mergeUpdates(updates);
-      void this.handleLocalUpdate(collectionName, merged);
-    }
-
-    this.pendingUpdates.clear();
-  }
-
-  private onPeerUpdate(msg: IncomingPeerDataMessage): void {
-    if (msg.type === "sync-upgrade-offer") {
-      const payloadStr =
-        typeof msg.payload === "string" ? msg.payload : new TextDecoder().decode(msg.payload);
-      const offer = JSON.parse(payloadStr) as { pluginUrl: string; version: number };
-      this.loadPlugin(offer.pluginUrl)
-        .then(() => {
-          this.network.sendTo(msg.from, {
-            type: "sync-upgrade-accept",
-            payload: JSON.stringify({ version: offer.version }),
-          });
-        })
-        .catch(() => {
-          console.warn(`Peer ${msg.from} failed to upgrade. Ignoring their updates.`);
-        });
-
-      return;
-    }
-
-    if (msg.type === "sync-upgrade-accept") {
-      return;
-    }
-
-    if (msg.type !== "sync-update" && msg.type !== "awareness-update") return;
-
-    let payload: Uint8Array;
-
-    try {
-      payload = base64ToBytes(msg.payload);
-    } catch {
-      return;
-    }
-
-    const decoded = this.decodeMessage(payload);
+    const decoded = this.activeProtocol.decode(msg.payload);
     if (decoded === null) return;
 
     if (msg.type === "sync-update") {
@@ -551,47 +492,8 @@ doc.on("update", (update: Uint8Array, origin: unknown) => {
     }
   }
 
-  private encodeMessage(collectionName: string, update: Uint8Array): string {
-    const nameBytes = new TextEncoder().encode(collectionName);
-    const header = new Uint8Array(2);
-    header[0] = (nameBytes.length >> 8) & 0xff;
-    header[1] = nameBytes.length & 0xff;
-    const combined = new Uint8Array(2 + nameBytes.length + update.length);
-    combined.set(header, 0);
-    combined.set(nameBytes, 2);
-    combined.set(update, 2 + nameBytes.length);
-    return bytesToBase64(combined);
-  }
-
-  private decodeMessage(bytes: Uint8Array): {
-    collectionName: string;
-    update: Uint8Array;
-  } | null {
-    try {
-      if (bytes.length < 2) return null;
-      const nameLen = (bytes[0]! << 8) | bytes[1]!;
-      if (bytes.length < 2 + nameLen) return null;
-      const nameBytes = bytes.slice(2, 2 + nameLen);
-      const update = bytes.slice(2 + nameLen);
-      return {
-        collectionName: new TextDecoder().decode(nameBytes),
-        update,
-      };
-    } catch {
-      return null;
-    }
-  }
-
   private updateState(partial: Partial<SyncState>): void {
     this._state = { ...this._state, ...partial };
     this.emit("state:change", this._state);
-  }
-
-  private async refreshPendingCount(): Promise<void> {
-    const pending = await this.outbox.count();
-
-    this.updateState({
-      pendingUpdates: pending,
-    });
   }
 }

@@ -1,54 +1,40 @@
-import type { SyncProtocol } from "zerithdb-core";
+export interface SyncMessage {
+  collectionName: string;
+  update: Uint8Array;
+}
 
 /**
- * Default ZerithDB sync protocol.
- * 
- * This class handles the encoding and decoding of synchronization messages
- * used in the ZerithDB distributed system. It defines how data updates
- * (such as document changes) are serialized for transmission over the network.
- * 
- * Encodes messages as: [nameLen (1 byte)] + [collectionName (N bytes)] + [yjsUpdate (M bytes)]
- * Payload is base64 encoded for transmission.
+ * Defines how sync updates are encoded and decoded for transmission.
+ * Swapping this allows for "hot-reloading" P2P protocols.
  */
-export class DefaultSyncProtocol implements SyncProtocol {
-  /** The unique identifier for this protocol version. */
+export interface SyncProtocol {
+  name: string;
+  version: string;
+  encode(message: SyncMessage): string | Uint8Array;
+  decode(payload: string | Uint8Array): SyncMessage | null;
+}
+
+/**
+ * Default binary protocol for ZerithDB.
+ * Encodes: [nameLen (1 byte), collectionName (N bytes), update (M bytes)]
+ */
+export class DefaultProtocol implements SyncProtocol {
   readonly name = "default";
-  
-  /** The current version of the protocol. */
   readonly version = "1.0.0";
 
-  /**
-   * Encodes a collection name and its corresponding update data into a Base64 string.
-   * 
-   * The encoding format consists of:
-   * 1. A 1-byte header specifying the length of the collection name.
-   * 2. The collection name encoded as UTF-8 bytes.
-   * 3. The actual update data.
-   * 
-   * @param collectionName - The name of the document collection being updated.
-   * @param update - The raw byte array representing the update payload.
-   * @returns A Base64 encoded string representing the entire combined message.
-   */
-  encode(collectionName: string, update: Uint8Array): string {
+  encode({ collectionName, update }: SyncMessage): Uint8Array {
     const nameBytes = new TextEncoder().encode(collectionName);
     const header = new Uint8Array([nameBytes.length]);
     const combined = new Uint8Array(1 + nameBytes.length + update.length);
     combined.set(header, 0);
     combined.set(nameBytes, 1);
     combined.set(update, 1 + nameBytes.length);
-    return bytesToBase64(combined);
+    return combined;
   }
 
-  /**
-   * Decodes a previously encoded sync message back into its collection name and update payload.
-   * 
-   * @param data - The received data, either as a Base64 string or raw Uint8Array.
-   * @returns An object containing the extracted `collectionName` and `update` array,
-   *          or `null` if the decoding fails or the data is malformed.
-   */
-  decode(data: string | Uint8Array): { collectionName: string; update: Uint8Array } | null {
+  decode(payload: string | Uint8Array): SyncMessage | null {
     try {
-      const bytes = typeof data === "string" ? base64ToBytes(data) : data;
+      const bytes = typeof payload === "string" ? this.base64ToBytes(payload) : payload;
       const nameLen = bytes[0];
       if (nameLen === undefined) return null;
       const nameBytes = bytes.slice(1, 1 + nameLen);
@@ -57,31 +43,12 @@ export class DefaultSyncProtocol implements SyncProtocol {
         collectionName: new TextDecoder().decode(nameBytes),
         update,
       };
-    } catch (error) {
-      console.error("[SyncProtocol] Failed to decode sync message:", error);
+    } catch {
       return null;
     }
   }
-}
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-/**
- * Converts a Uint8Array representation into a Base64 encoded string.
- * 
- * @param bytes - The input byte array to encode.
- * @returns The resulting Base64 string.
- */
-function bytesToBase64(bytes: Uint8Array): string {
-  return btoa(String.fromCharCode(...bytes));
-}
-
-/**
- * Parses a Base64 encoded string back into a Uint8Array.
- * 
- * @param b64 - The input Base64 string.
- * @returns The decoded byte array.
- */
-function base64ToBytes(b64: string): Uint8Array {
-  return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+  private base64ToBytes(b64: string): Uint8Array {
+    return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+  }
 }
