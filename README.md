@@ -294,49 +294,24 @@ npx zerithdb types --output ./src/db.types.ts
 
 ---
 
-## Firebase Import
+## Run Tests Locally
 
-Migrating from Firebase Realtime Database? ZerithDB includes a built-in import tool that converts
-Firebase JSON exports into ZerithDB-compatible collection files.
+After cloning and installing dependencies, use the commands below:
 
 ```bash
-# Basic usage — reads Firebase export, writes one JSON file per collection
-node scripts/firebase-import.mjs ./firebase-export.json
+pnpm install
 
-# Custom output directory
-node scripts/firebase-import.mjs ./firebase-export.json --out ./my-collections
+# Run tests across the monorepo (unit/integration)
+pnpm test
+
+# Optional: run tests for a single package while iterating
+pnpm --filter zerithdb-db test
 ```
 
-**How it works:**
+### Notes
 
-- Each **top-level key** in the Firebase export becomes a **ZerithDB collection**
-- Each **child object** becomes a **document** in that collection
-- Arrays and nested objects within documents are **preserved as-is**
-- The original Firebase push key is stored as `_firebaseKey` for traceability
-- No external dependencies — uses only Node.js built-ins
-
-**Example input** (`firebase-export.json`):
-
-```json
-{
-  "users": {
-    "-Mxyz1": { "name": "Alice", "age": 30 },
-    "-Mxyz2": { "name": "Bob", "age": 25 }
-  },
-  "posts": {
-    "-Mabc1": { "title": "Hello", "tags": ["news", "update"] }
-  }
-}
-```
-
-**Example output** (`firebase-import-output/users.json`):
-
-```json
-[
-  { "_firebaseKey": "-Mxyz1", "name": "Alice", "age": 30 },
-  { "_firebaseKey": "-Mxyz2", "name": "Bob", "age": 25 }
-]
-```
+- `pnpm test` runs the current repository test suite via Turborepo.
+- For package-scoped iteration, use `pnpm --filter <package-name> test`.
 
 ---
 
