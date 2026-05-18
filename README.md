@@ -14,8 +14,9 @@
 
 [**Documentation**](https://zerithdb.netlify.app/docs) ·
 [**Live Playground**](https://zerithdb.netlify.app/playground) ·
-[**Discord**](https://discord.gg/MhvuDvzWfF) · [**Roadmap**](ROADMAP.md)
-
+[**Discord**](https://discord.gg/MhvuDVzWfF) ·
+[**Roadmap**](ROADMAP.md) ·
+[**WebRTC Troubleshooting Guide**](docs/webrtc-troubleshooting.md)
 </div>
 
 ## Ecosystem

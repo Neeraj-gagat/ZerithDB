@@ -1,6 +1,10 @@
 import { describe, it, expect } from "vitest";
 
-import { bytesToHex, hexToBytes, isPlainObject } from "../../packages/utils/src/index.js";
+import {
+  bytesToHex,
+  hexToBytes,
+  isPlainObject,
+} from "../../packages/utils/src/index.js";
 
 describe("utils", () => {
   it("should convert bytes to hex", () => {
