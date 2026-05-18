@@ -15,6 +15,7 @@ import {
   Zap,
 } from "lucide-react";
 import { usePlaygroundSync } from "@/hooks/usePlaygroundSync";
+import { MergeReviewCard } from "@/components/MergeReviewCard";
 import {
   DEFAULT_PLAYGROUND_QUERY,
   mergePlaygroundNotes,
@@ -97,6 +98,9 @@ export default function HomePlayground() {
     isLoading,
     peerStatus,
     lastSyncedAt,
+    mergeReview,
+    approveMergeReview,
+    dismissMergeReview,
     insertOnClientA,
   } = usePlaygroundSync();
 
@@ -136,7 +140,9 @@ export default function HomePlayground() {
       setSyncPulse("B");
       if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
       syncTimeoutRef.current = setTimeout(() => setSyncPulse(null), 700);
-      setOutput(`Inserted on Client A → syncing via CRDT to Client B...\n• ${result.note.text}`);
+      setOutput(
+        `Inserted on Client A → AI merge review will appear if Client B diverges.\n• ${result.note.text}`
+      );
     } else {
       setOutput(
         `Inserted on Client A while offline → queued for sync when connection is restored.\n• ${result.note.text}`
@@ -277,9 +283,17 @@ export default function HomePlayground() {
               />
             </div>
 
+            {mergeReview && (
+              <MergeReviewCard
+                review={mergeReview}
+                onApprove={approveMergeReview}
+                onDismiss={dismissMergeReview}
+              />
+            )}
+
             <p className="text-sm text-muted-foreground leading-relaxed">
               Edits on Client A propagate to Client B when the network is online. Toggle offline to
-              queue changes, then reconnect to see CRDT merge in action.
+              queue changes, then reconnect to review and approve the AI-suggested merge.
             </p>
 
             <Link

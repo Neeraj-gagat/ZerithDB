@@ -135,6 +135,31 @@ export interface IpfsConfig {
   provider?: IpfsProvider;
 }
 
+export interface ConflictResolverConfig {
+  /**
+   * Enable AI-driven semantic conflict resolution.
+   * @default false
+   */
+  enabled?: boolean;
+
+  /**
+   * Optional local model name used by the reference resolver.
+   */
+  modelName?: string;
+
+  /**
+   * Minimum confidence required before the resolver auto-applies a merge.
+   * Conflicts below this threshold are flagged for review.
+   * @default 0.7
+   */
+  autoApplyThreshold?: number;
+
+  /**
+   * Called when a conflict is flagged for review.
+   */
+  onConflict?: (collectionName: string, suggestion: string) => void;
+}
+
 export interface ZerithDBConfig {
   /**
    * Unique identifier for this application's data namespace.
@@ -147,7 +172,7 @@ export interface ZerithDBConfig {
   auth?: AuthConfig;
   network?: NetworkConfig;
   debug?: DebugConfig;
-  ipfs?: IpfsConfig;
+  conflictResolver?: ConflictResolverConfig;
 
   /**
    * Log level for internal ZerithDB diagnostics.

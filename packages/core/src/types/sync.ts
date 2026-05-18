@@ -36,6 +36,10 @@ export interface SyncPlugin {
   id: string;
   version: number;
   /**
+   * Optional semantic conflict resolver for text-heavy collections.
+   */
+  conflictResolver?: ConflictResolver;
+  /**
    * Hook to transform/resolve conflicts before applying a remote update
    */
   onBeforeApplyUpdate?: (
@@ -52,41 +56,17 @@ export interface SyncPlugin {
   ) => Uint8Array | null | Promise<Uint8Array | null>;
 }
 
-export interface EphemeralPeerState<
-  TState extends Record<string, unknown> = Record<string, unknown>,
-> {
-  peerId: string;
-  state: TState;
-  sequence: number;
-  updatedAt: number;
-}
-
-export interface ActiveSpeakerState {
-  peerId: string;
-  streamId?: string;
-  trackId?: string;
-  audioLevel?: number;
-  updatedAt: number;
-}
-
-export interface VideoParticipantState {
-  peerId: string;
-  muted: {
-    audio: boolean;
-    video: boolean;
-  };
-  activeSpeaker?: ActiveSpeakerState;
-  streams: Record<string, MediaStreamMetadata>;
-  updatedAt: number;
-}
-/**
- * Defines how sync updates are encoded and decoded for network transmission.
- * Swapping the protocol allows for hot-reloading different wire formats
- * (e.g. binary, JSON, encrypted) without restarting the sync engine.
- */
-export interface SyncProtocol {
-  readonly name: string;
-  readonly version: string;
-  encode(collectionName: string, update: Uint8Array): string | Uint8Array;
-  decode(data: string | Uint8Array): { collectionName: string; update: Uint8Array } | null;
+export interface ConflictResolver {
+  id: string;
+  version: number;
+  resolveConflict: (
+    collectionName: string,
+    localSnapshot: Uint8Array,
+    incomingUpdate: Uint8Array,
+    fromPeer: string
+  ) =>
+    | Uint8Array
+    | { update: Uint8Array; suggestion?: string }
+    | null
+    | Promise<Uint8Array | { update: Uint8Array; suggestion?: string } | null>;
 }

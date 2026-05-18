@@ -15,6 +15,13 @@ type SyncEvents = {
   "state:change": SyncState;
   "update:local": { collectionName: string; update: Uint8Array };
   "update:remote": { collectionName: string; update: Uint8Array; fromPeer: string };
+  "conflict:flagged": {
+    collectionName: string;
+    fromPeer: string;
+    localSnapshot: Uint8Array;
+    incomingUpdate: Uint8Array;
+    suggestion?: string;
+  };
 };
 
 /**
@@ -443,6 +450,47 @@ doc.on("update", (update: Uint8Array, origin: unknown) => {
 
     try {
       const doc = this.getDoc(collectionName);
+      const localSnapshot = Y.encodeStateAsUpdate(doc);
+
+      for (const plugin of this.plugins.values()) {
+        if (!plugin.conflictResolver) continue;
+
+        const resolveConflict = plugin.conflictResolver.resolveConflict;
+        if (!resolveConflict) continue;
+
+        const resolution = await resolveConflict(
+          collectionName,
+          localSnapshot,
+          update,
+          fromPeer
+        );
+
+        if (!resolution) {
+          this.emit("conflict:flagged", {
+            collectionName,
+            fromPeer,
+            localSnapshot,
+            incomingUpdate: update,
+          });
+          break;
+        }
+
+        if (resolution instanceof Uint8Array) {
+          update = resolution;
+        } else {
+          update = resolution.update;
+          if (resolution.suggestion) {
+            this.emit("conflict:flagged", {
+              collectionName,
+              fromPeer,
+              localSnapshot,
+              incomingUpdate: update,
+              suggestion: resolution.suggestion,
+            });
+          }
+        }
+      }
+
       Y.applyUpdate(doc, update, "remote");
       if (mutationId) {
         await this.inbox.acknowledge(mutationId);

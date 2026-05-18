@@ -3,12 +3,13 @@ import type { Document, Identity, QueryFilter, SyncState, ZerithDBConfig, MediaS
 export type { Document, Identity, QueryFilter, SyncState, ZerithDBConfig, MediaStreamMetadata };
 import { MemoryCollector, estimateStorageBytes } from "zerithdb-devtools";
 import { ZerithDBError, ErrorCode } from "zerithdb-core";
-import { DbClient, CollectionClient } from "zerithdb-db";
-import type { CloudBackupTarget, LocalCloudBackupOptions } from "zerithdb-db";
-import { LocalCloudBackupAdapter } from "zerithdb-db";
-import { SyncEngine } from "zerithdb-sync";
-import { AuthManager } from "zerithdb-auth";
-import { NetworkManager } from "zerithdb-network";
+import { DbClient, CollectionClient } from "./db-client.js";
+import type { CloudBackupTarget, LocalCloudBackupOptions } from "./db-client.js";
+import { LocalCloudBackupAdapter } from "./db-client.js";
+import { SyncEngine } from "./sync-engine.js";
+import { AuthManager } from "./auth-manager.js";
+import { NetworkManager } from "./network-manager.js";
+import { LLMConflictResolver } from "./conflict-resolution/resolver.js";
 
 /**
  * The root ZerithDB application instance returned by {@link createApp}.
@@ -137,6 +138,31 @@ export function createApp(config: ZerithDBConfig): ZerithDBApp {
 
     return syncInstance;
   };
+
+  if (resolvedConfig.conflictResolver?.enabled === true) {
+    const resolver = new LLMConflictResolver({
+      modelName: resolvedConfig.conflictResolver.modelName,
+      autoApplyThreshold: resolvedConfig.conflictResolver.autoApplyThreshold,
+    });
+
+    sync.registerPlugin({
+      id: resolver.id,
+      version: resolver.version,
+      conflictResolver: resolver,
+    });
+
+    if (resolvedConfig.conflictResolver.onConflict) {
+      const onConflict = resolvedConfig.conflictResolver.onConflict;
+      sync.on("conflict:flagged", (event) => {
+        const suggestion =
+          typeof event === "object" && event !== null && "suggestion" in event &&
+          typeof event.suggestion === "string"
+            ? event.suggestion
+            : "Conflict flagged for review";
+        onConflict(event.collectionName, suggestion);
+      });
+    }
+  }
 
   let memoryCollector: MemoryCollector | null = null;
   if (resolvedConfig.debug?.devtools === true) {

@@ -14,8 +14,7 @@ export type {
   AuthConfig,
   NetworkConfig,
   DebugConfig,
-  IpfsConfig,
-  IpfsProvider,
+  ConflictResolverConfig,
 } from "./types/config.js";
 export type {
   Document,
@@ -27,32 +26,12 @@ export type {
   InsertResult,
   FindResult,
 } from "./types/db.js";
-export type {
-  PeerId,
-  PeerInfo,
-  RoomId,
-  NetworkMessage,
-  MediaStreamKind,
-  MediaTrackMetadata,
-  MediaStreamMetadata,
-} from "./types/network.js";
-export type { Identity, PublicKey, Signature, IAuthManager, AuthEvents } from "./types/auth.js";
-
+export type { PeerId, PeerInfo, RoomId, NetworkMessage } from "./types/network.js";
+export type { Identity, PublicKey, Signature } from "./types/auth.js";
 export type {
   SyncUpdate,
   SyncState,
   AwarenessState,
   SyncPlugin,
-  SyncProtocol,
-  EphemeralPeerState,
-  ActiveSpeakerState,
-  VideoParticipantState,
+  ConflictResolver,
 } from "./types/sync.js";
-
-export type {
-  GraphNode,
-  GraphEdge,
-  GraphNodeId,
-  EdgeLabel,
-  GraphTraversalResult,
-} from "./types/graph.js";
