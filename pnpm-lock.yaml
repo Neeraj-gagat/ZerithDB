@@ -906,18 +906,6 @@ importers:
       dexie:
         specifier: ^4.0.8
         version: 4.4.2
-      lib0:
-        specifier: ^0.2.98
-        version: 0.2.117
-      y-indexeddb:
-        specifier: ^9.0.12
-        version: 9.0.12(yjs@13.6.30)
-      yjs:
-        specifier: ^13.6.18
-        version: 13.6.30
-      zerithdb-auth:
-        specifier: workspace:*
-        version: link:../auth
       zerithdb-core:
         specifier: workspace:*
         version: link:../core

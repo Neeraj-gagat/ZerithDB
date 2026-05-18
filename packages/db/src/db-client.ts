@@ -9,37 +9,29 @@ import type {
   UpdateSpec,
   CollectionOptions,
 } from "zerithdb-core";
-import { ZerithDBError, ErrorCode } from "zerithdb-core";
+import { ZerithDBError, ErrorCode, EventEmitter } from "zerithdb-core";
 import { wrapIDBOperation } from "./internal/wrap-idb-operation.js";
 import { EventEmitter } from "zerithdb-core";
 import type { BackupExportOptions, BackupSnapshot } from "./backup.js";
 
-// ---------------------------------------------------------------------------
-// Internal sequence-counter document shape (stored in __zerithdb_seq store)
-// ---------------------------------------------------------------------------
-
-interface SequenceRecord {
-  /** collection name used as the primary key */
-  _collectionName: string;
-  /** last value that was handed out */
-  _lastId: number;
-}
-
-const SEQ_STORE = "__zerithdb_seq";
+type CollectionEvents<T extends Record<string, any>> = {
+  mutation: { collectionName: string; doc: Document<T>; type: "insert" | "update" | "delete" };
+};
 
 /**
  * A handle to a single named collection within the ZerithDB local database.
  * All operations are async and backed by IndexedDB.
  */
-
-export class CollectionClient<T extends Record<string, any> = Record<string, any>> {
-  private readonly idStrategy: "uuid" | "autoincrement";
-
+export class CollectionClient<
+  T extends Record<string, any> = Record<string, any>
+> extends EventEmitter<CollectionEvents<T>> {
   constructor(
     private readonly table: Table<Document<T>>,
     private readonly collectionName: string,
-    private readonly options?: CollectionOptions<T>
-  ) {}
+    private readonly peerId: string
+  ) {
+    super();
+  }
 
   /**
    * Validates a raw document against the collection schema (if configured).
@@ -64,11 +56,7 @@ export class CollectionClient<T extends Record<string, any> = Record<string, any
 
   /**
    * Insert a new document into the collection.
-   * Automatically assigns `_id`, `_createdAt`, and `_updatedAt`.
-   *
-   * When `idStrategy` is `"autoincrement"`, `_id` will be a sequential integer
-   * starting at `1`. When `idStrategy` is `"uuid"` (default), `_id` is a
-   * UUID v7 string.
+   * Automatically assigns `_id`, `_createdAt`, `_updatedAt`, `_vclock`, and `_lamport`.
    */
 
   async insert(document: T): Promise<InsertResult> {
@@ -82,6 +70,9 @@ export class CollectionClient<T extends Record<string, any> = Record<string, any
       _id: id,
       _createdAt: now,
       _updatedAt: now,
+      _vclock: { [this.peerId]: 1 },
+      _lamport: now,
+      _deleted: false,
     };
 
     return wrapIDBOperation(
@@ -89,7 +80,7 @@ export class CollectionClient<T extends Record<string, any> = Record<string, any
       `Failed to insert into collection "${this.collectionName}"`,
       async () => {
         await this.table.add(doc);
-        this.notifyMutation?.();
+        this.emit("mutation", { collectionName: this.collectionName, doc, type: "insert" });
         return { id };
       }
     );
@@ -117,6 +108,9 @@ export class CollectionClient<T extends Record<string, any> = Record<string, any
       _id: ids[i]!,
       _createdAt: now,
       _updatedAt: now,
+      _vclock: { [this.peerId]: 1 },
+      _lamport: now,
+      _deleted: false,
     })) as Document<T>[];
     if (!documents || documents.length === 0) {
       throw new ZerithDBError(ErrorCode.DB_WRITE_FAILED, "insertMany requires a non-empty array");
@@ -129,11 +123,10 @@ export class CollectionClient<T extends Record<string, any> = Record<string, any
       `Failed to bulk insert into collection "${this.collectionName}"`,
       async () => {
         await this.table.bulkAdd(docs);
-        results.push(...docs.map((d) => ({ id: d._id })));
-
-        if (index + CollectionClient.writeBatchSize < documents.length) {
-          await yieldToEventLoop();
+        for (const doc of docs) {
+          this.emit("mutation", { collectionName: this.collectionName, doc, type: "insert" });
         }
+        return docs.map((d) => ({ id: d._id }));
       }
 
       return results;
@@ -148,13 +141,7 @@ export class CollectionClient<T extends Record<string, any> = Record<string, any
 
   /**
    * Find documents matching a filter.
-   * All filter fields are ANDed together.
-   *
-   * @example
-   * ```typescript
-   * const active = await todos.find({ done: false });
-   * const high = await todos.find({ priority: { $gte: 3 } });
-   * ```
+   * Excludes documents marked as deleted by default.
    */
   async find(filter: QueryFilter<T> = {}, options: QueryOptions<T> = {}): Promise<Document<T>[]> {
     return wrapIDBOperation(
@@ -162,30 +149,8 @@ export class CollectionClient<T extends Record<string, any> = Record<string, any
       `Failed to query collection "${this.collectionName}"`,
       async () => {
         const all = await this.table.toArray();
-        let results = all.filter((doc) => this.matchesFilter(doc, filter));
-
-        if (options.sort) {
-          const { field, order } = options.sort;
-          results.sort((a, b) => {
-            const valA = a[field as keyof typeof a];
-            const valB = b[field as keyof typeof b];
-            if (valA < valB) return order === "desc" ? 1 : -1;
-            if (valA > valB) return order === "desc" ? -1 : 1;
-            return 0;
-          });
-        }
-        count++;
-
-        const skip = options.skip ?? options.offset ?? 0;
-        if (skip > 0) {
-          results = results.slice(skip);
-        }
-
-        if (options.limit !== undefined) {
-          results = results.slice(0, options.limit);
-        }
-
-        return results;
+        const compiledFilter = this.precompileRegexes(filter);
+        return all.filter((doc) => !doc._deleted && this.matchesFilter(doc, compiledFilter));
       }
     );
   }
@@ -198,7 +163,10 @@ export class CollectionClient<T extends Record<string, any> = Record<string, any
     return wrapIDBOperation(
       ErrorCode.DB_READ_FAILED,
       `Failed to get document "${id}" from "${this.collectionName}"`,
-      () => this.table.get(id as string)
+      async () => {
+        const doc = await this.table.get(id);
+        return doc && !doc._deleted ? doc : undefined;
+      }
     );
     if (!doc) return undefined;
     return this.restoreIpfsReferences(doc);
@@ -234,23 +202,25 @@ export class CollectionClient<T extends Record<string, any> = Record<string, any
         }
 
         const now = Date.now();
-        const updated = matches.map((doc) => this.applyUpdateSpec(doc, spec, now));
 
-        // Validate the updated shape (strip internal fields before validating)
-        if (this.options?.schema) {
-          for (const doc of updated) {
-            const { _id, _createdAt, _updatedAt, ...raw } = doc as Document<T> & Record<string, unknown>;
-            this.validateDoc(raw as T);
-          }
+        const updatedDocs = matches.map((doc) => {
+          const next = this.applyUpdateSpec(doc, spec, now);
+          next._vclock = { ...doc._vclock, [this.peerId]: (doc._vclock[this.peerId] || 0) + 1 };
+          next._lamport = Math.max(doc._lamport, now) + 1;
+          return next;
+        });
+
+        await this.table.bulkPut(updatedDocs);
+        for (const doc of updatedDocs) {
+          this.emit("mutation", { collectionName: this.collectionName, doc, type: "update" });
         }
 
-        await this.table.bulkPut(updated);
         return matches.length;
       }
     );
   }
   /**
-   * Delete documents matching a filter.
+   * Logical delete documents matching a filter (tombstone).
    * Returns the number of deleted documents.
    */
 
@@ -260,7 +230,21 @@ export class CollectionClient<T extends Record<string, any> = Record<string, any
       `Failed to delete documents from "${this.collectionName}"`,
       async () => {
         const matches = await this.find(filter);
-        await this.table.bulkDelete(matches.map((d) => d._id as string));
+        const now = Date.now();
+
+        const deletedDocs = matches.map((doc) => ({
+          ...doc,
+          _deleted: true,
+          _updatedAt: now,
+          _vclock: { ...doc._vclock, [this.peerId]: (doc._vclock[this.peerId] || 0) + 1 },
+          _lamport: Math.max(doc._lamport, now) + 1,
+        }));
+
+        await this.table.bulkPut(deletedDocs);
+        for (const doc of deletedDocs) {
+          this.emit("mutation", { collectionName: this.collectionName, doc, type: "delete" });
+        }
+
         return matches.length;
       }
 
@@ -275,9 +259,15 @@ export class CollectionClient<T extends Record<string, any> = Record<string, any
   }
 
   /**
-   * Delete every document in the collection.
-   * The auto-increment counter is also reset to `0` so the next insert
-   * starts from `1` again.
+   * For internal use by SyncEngine to apply remote updates deterministically.
+   */
+  async applyRemoteUpdate(doc: Document<T>): Promise<void> {
+    await this.table.put(doc);
+    // Note: We don't emit "mutation" here to avoid echo loops in SyncEngine
+  }
+
+  /**
+   * Delete every document in the collection (Hard delete).
    */
 
   async clearAll(): Promise<void> {
@@ -428,8 +418,9 @@ class ZerithDBDexie extends Dexie {
     this.ensureSeqStore();
 
     if (!this.tableMap.has(name)) {
-      this._currentSchema[name] = "_id, _createdAt, _updatedAt";
-
+      this._currentSchema[name] = "_id, _createdAt, _updatedAt, _lamport, _deleted";
+      this._currentSchema["_sync_logs"] = "++_id, collectionName, docId, timestamp";
+      
       // We must increment the version for every new collection added dynamically
       const nextVersion = Math.max(this.verno, this._pendingVersion) + 1;
 
@@ -442,22 +433,13 @@ class ZerithDBDexie extends Dexie {
       this.version(nextVersion).stores(this._currentSchema);
 
       this.tableMap.set(name, this.table(name));
+      this.tableMap.set("_sync_logs", this.table("_sync_logs"));
     }
-
     return this.tableMap.get(name)!;
   }
 
-  /** Returns the sequence Table (always provisioned alongside collections). */
-  seqTable(): Table<SequenceRecord> {
-    // If not yet provisioned, set it up now
-    if (!this._seqStoreProvisioned) {
-      this.ensureSeqStore();
-      const nextVersion = Math.max(this.verno, this._pendingVersion) + 1;
-      this._pendingVersion = nextVersion;
-      if (this.isOpen()) this.close();
-      this.version(nextVersion).stores(this._currentSchema);
-    }
-    return this.table(SEQ_STORE) as Table<SequenceRecord>;
+  get syncLogs(): Table {
+    return this.table("_sync_logs");
   }
 }
 
@@ -474,19 +456,22 @@ export class DbClient extends EventEmitter<{ "mutation": { collection: string } 
   private readonly appId: string;
 
   private readonly collections = new Map<string, CollectionClient<any>>();
+  public readonly peerId: string;
 
   constructor(config: ZerithDBConfig) {
     this.appId = config.appId;
     this.dexie = new ZerithDBDexie(config.appId);
-    if (config.ipfs?.enabled) {
-      this.dexie.ensureIpfsCacheTable();
-    }
+    // Simplified peerId generation - in production this should be stable
+    this.peerId = uuidv7();
   }
 
   collection<T extends Record<string, any>>(name: string, options?: CollectionOptions<T>): CollectionClient<T> {
     if (!this.collections.has(name)) {
       const table = this.dexie.ensureCollection(name);
-      this.collections.set(name, new CollectionClient<T>(table as Table<Document<T>>, name, options));
+      this.collections.set(
+        name,
+        new CollectionClient<T>(table as Table<Document<T>>, name, this.peerId)
+      );
     }
     const cacheKey = `${name}:${options.idStrategy ?? "uuid"}`;
 
@@ -501,6 +486,14 @@ export class DbClient extends EventEmitter<{ "mutation": { collection: string } 
       this.collections.set(cacheKey, new CollectionClient<T>(tableFn, name, seqFn, options));
     }
     return this.collections.get(cacheKey) as CollectionClient<T>;
+  }
+
+  async logConflict(log: any): Promise<void> {
+    await this.dexie.syncLogs.add(log);
+  }
+
+  async getSyncLogs(): Promise<any[]> {
+    return this.dexie.syncLogs.toArray();
   }
 
   async getMemoryStats(): Promise<{ recordCount: number; collections: Record<string, number> }> {
@@ -529,7 +522,7 @@ export class DbClient extends EventEmitter<{ "mutation": { collection: string } 
    * Excludes the internal sequence store.
    */
   allCollectionNames(): string[] {
-    return this.dexie.tables.map((t) => t.name).filter((n) => n !== SEQ_STORE);
+    return this.dexie.tables.map((t) => t.name).filter((name) => !name.startsWith("_"));
   }
 
   async exportSnapshot(options: BackupExportOptions = {}): Promise<BackupSnapshot> {

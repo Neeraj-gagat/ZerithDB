@@ -8,90 +8,49 @@ export type DocumentId = string | number;
 /** Name of a collection within ZerithDB */
 export type CollectionName = string;
 
-/** System fields automatically added to every stored document */
-export type DocumentMetadata = {
+/** Metadata fields added to every document by ZerithDB */
+type Metadata = {
   _id: DocumentId;
   /** Created-at timestamp in Unix milliseconds */
   _createdAt: number;
   /** Last-updated-at timestamp in Unix milliseconds */
   _updatedAt: number;
+  /** Vector clock tracking causal dependencies per peer */
+  _vclock: Record<string, number>;
+  /** Lamport timestamp used for fallback conflict resolution */
+  _lamport: number;
+  /** Tombstone marker for logical deletes during P2P sync */
+  _deleted?: boolean;
 };
 
-/** Base document shape. All stored documents have system fields added automatically. */
-export type Document<T extends Record<string, any> = Record<string, any>> = T & DocumentMetadata;
+/** Internal helper to safely merge schema and metadata fields */
+type MergeDocument<T extends Record<string, any>> = {
+  [K in keyof T | keyof Metadata]: K extends keyof Metadata
+    ? Metadata[K]
+    : K extends keyof T
+      ? T[K]
+      : never;
+};
 
-type RegexFilter =
-  | { $regex: RegExp | string }
-  | {
-    $regex: RegExp | string;
-    /** Regex flags (for example: "i", "gm") */
-    $flags?: string;
-    /** Alias for $flags for MongoDB-like ergonomics */
-    $options?: string;
-  };
-
-/**
- * Options passed when opening a collection handle.
- *
- * @example UUID v7 (default)
- * ```ts
- * db.collection("users")
- * ```
- *
- * @example Auto-incrementing integer IDs
- * ```ts
- * db.collection("users", { idStrategy: "autoincrement" })
- * ```
- */
-export interface CollectionOptions {
-  /**
-   * Controls how `_id` values are generated for new documents.
-   *
-   * - `"uuid"` *(default)* — UUID v7, globally unique and time-sortable.
-   *   Safe for distributed / P2P workloads.
-   * - `"autoincrement"` — Sequential integers starting at `1`.
-   *   Familiar for SQL-style workflows. **Not safe for P2P sync** — IDs
-   *   will collide when two peers insert independently.
-   */
-  idStrategy?: "uuid" | "autoincrement";
-}
+/** Base document shape. All stored documents have metadata fields added automatically. */
+export type Document<T extends Record<string, any> = Record<string, any>> = MergeDocument<T>;
 
 /**
  * MongoDB-style query filter operators.
- * Nested object fields are matched by equality.
- *
- * @example
- * // Native RegExp
- * { title: { $regex: /meeting/i } }
- *
- * @example
- * // String pattern with flags
- * { title: { $regex: "meeting", $flags: "i" } }
- */
-type QueryFilterValue<T> =
-  | T
-  | { $eq: T }
-  | { $ne: T }
-  | { $gt: T }
-  | { $gte: T }
-  | { $lt: T }
-  | { $lte: T }
-  | { $in: T[] }
-  | { $nin: T[] }
-  | { $exists: boolean }
-  | { $regex: RegExp | string };
-  | { $exists: boolean };
-
-/**
- * Query filters can target both user-defined fields and ZerithDB system fields
- * like `_id`, `_createdAt`, and `_updatedAt`.
+ * Supports filtering on both schema fields and metadata.
  */
 export type QueryFilter<T extends Record<string, any>> = {
-  [K in keyof T]?: QueryFilterValue<T[K]>;
-} & {
-  _id?: QueryFilterValue<DocumentId>;
-  _createdAt?: QueryFilterValue<number>;
-  _updatedAt?: QueryFilterValue<number>;
+  [K in keyof Document<T>]?:
+    | Document<T>[K]
+    | { $eq: Document<T>[K] }
+    | { $ne: Document<T>[K] }
+    | { $gt: Document<T>[K] }
+    | { $gte: Document<T>[K] }
+    | { $lt: Document<T>[K] }
+    | { $lte: Document<T>[K] }
+    | { $in: Document<T>[K][] }
+    | { $nin: Document<T>[K][] }
+    | { $regex: RegExp | string };
 };
 
 /** Partial update spec — only user-defined fields are modified */

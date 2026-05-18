@@ -36,9 +36,10 @@ export type {
   SyncState,
   AwarenessState,
   SyncPlugin,
+  MergePolicy,
+  ConflictResolution,
+  SyncLog,
   EphemeralPeerState,
-  MediaStreamTrackMetadata,
-  MediaStreamMetadata,
   ActiveSpeakerState,
   VideoParticipantState,
 } from "./types/sync.js";

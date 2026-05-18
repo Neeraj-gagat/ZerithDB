@@ -48,7 +48,15 @@ transport?: "auto" | "websocket" | "polling";
    */
   transport?: "auto" | "websocket" | "polling";
 
-  /** Ephemeral Presence sharing configuration options. */
+  /**
+   * Per-collection merge policies for conflict resolution.
+   * Defaults to 'lww' (Last-Writer-Wins) if not specified.
+   */
+  mergePolicies?: Record<string, "lww" | "crdt" | ((local: any, remote: any) => any)>;
+
+  /**
+   * Configuration options for low-latency ephemeral sync state.
+   */
   ephemeral?: EphemeralConfig;
 }
 
