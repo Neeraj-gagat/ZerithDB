@@ -222,6 +222,20 @@ by Yjs using a deterministic timestamp + client ID tie-break. No user interventi
 
 ---
 
+### UCAN-based Capabilities
+
+ZerithDB uses UCANs (User Controlled Authorization Networks) for decentralized access control.  
+- **Delegation**: `auth.delegate(targetDid, capabilities, options)` returns a signed UCAN.  
+- **Enforcement**: Sync engine and DB client check UCANs before allowing reads/writes.  
+- **Attenuation**: Delegated capabilities are always a subset of the original.  
+- **Expiration**: Short-lived UCANs (default 1 hour) prevent indefinite access.
+
+Capability resource URIs follow the pattern:  
+`zerithdb://{appId}/{collection}/{optionalDocId}`  
+Wildcards: `zerithdb://my-app/todos/*` grants access to all documents in the `todos` collection.
+
+---
+
 ### `zerithdb-sdk`
 
 **Role:** The primary developer-facing API. A thin orchestration layer over `db`, `sync`, `network`,

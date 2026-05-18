@@ -22,15 +22,21 @@ import dynamic from "next/dynamic";
 import Image from "next/image";
 
 const CodeWalkthrough = dynamic(() => import("@/components/CodeWalkthrough"), {
-  loading: () => <div className="h-96 animate-pulse rounded-xl bg-gray-100" />,
+  loading: () => (
+    <div className="h-96 animate-pulse rounded-xl bg-gray-100 dark:bg-zinc-800 transition-colors duration-300" />
+  ),
 });
 
 const TerminalShowcase = dynamic(() => import("@/components/TerminalShowcase"), {
-  loading: () => <div className="h-96 animate-pulse rounded-xl bg-gray-100" />,
+  loading: () => (
+    <div className="h-96 animate-pulse rounded-xl bg-gray-100 dark:bg-zinc-800 transition-colors duration-300" />
+  ),
 });
 
 const AnimatedDiagram = dynamic(() => import("@/components/AnimatedDiagram"), {
-  loading: () => <div className="h-96 animate-pulse rounded-xl bg-gray-100" />,
+  loading: () => (
+    <div className="h-96 animate-pulse rounded-xl bg-gray-100 dark:bg-zinc-800 transition-colors duration-300" />
+  ),
 });
 import FrameworkSection from "@/components/FrameworkSection";
 import { useState, useEffect } from "react";
@@ -83,10 +89,10 @@ export default function LandingPage() {
   };
 
   return (
-    <main className="flex flex-col min-h-screen bg-background text-foreground transition-colors duration-300 selection:bg-blue-100 selection:text-blue-900 overflow-x-hidden">
+    <main className="flex flex-col min-h-screen bg-background text-foreground transition-colors duration-300 selection:bg-blue-100 selection:text-blue-900 ">
       {/* ── HEADER ── */}
-      <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-md">
-        <div className="container mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+      <header className="sticky top-0 z-50 bg-background/80 supports-[backdrop-filter]:bg-background/60 border-b border-border backdrop-blur-md">
+        <div className="container mx-auto flex items-center justify-between px-4 md:px-8 py-3 gap-3">
           <div className="flex items-center gap-2">
             <motion.div
               initial={{ rotate: -10, scale: 0.9 }}
@@ -122,6 +128,12 @@ export default function LandingPage() {
             >
               <Zap className="w-4 h-4" /> Playground
             </Link>
+            <Link
+              href="/dev"
+              className="text-slate-900 font-semibold hover:text-black transition-colors flex items-center gap-1.5"
+            >
+              <Terminal className="w-4 h-4" /> Dev
+            </Link>
           </nav>
           <div className="flex items-center gap-2 sm:gap-4">
             <ThemeToggle />
@@ -150,7 +162,7 @@ export default function LandingPage() {
             </a>
             <Link
               href="#get-started"
-              className="hidden sm:flex bg-black text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors whitespace-nowrap"
+              className="hidden sm:flex bg-black dark:bg-white text-white dark:text-black text-sm font-medium px-4 py-2 rounded-lg hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors whitespace-nowrap"
             >
               Get Started
             </Link>
@@ -252,7 +264,7 @@ export default function LandingPage() {
               opacity: [0.3, 0.4, 0.3],
             }}
             transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute top-10 left-1/4 w-[500px] h-[500px] bg-blue-100/50 rounded-full blur-[100px]"
+            className="absolute top-10 left-1/4 w-[500px] h-[500px] bg-blue-100/50 dark:bg-blue-900/20 rounded-full blur-[100px] transition-colors duration-300"
           />
           <motion.div
             animate={{
@@ -260,11 +272,11 @@ export default function LandingPage() {
               opacity: [0.2, 0.3, 0.2],
             }}
             transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-            className="absolute top-20 right-1/4 w-[600px] h-[600px] bg-indigo-100/40 rounded-full blur-[120px]"
+            className="absolute top-20 right-1/4 w-[600px] h-[600px] bg-indigo-100/40 dark:bg-indigo-900/20 rounded-full blur-[120px] transition-colors duration-300"
           />
 
           {/* Central Glow behind text */}
-          <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[400px] h-[400px] bg-blue-50/30 rounded-full blur-[80px]" />
+          <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[400px] h-[400px] bg-blue-50/30 dark:bg-blue-900/10 rounded-full blur-[80px] transition-colors duration-300" />
 
           {/* Structured Decorative Elements - Moved closer for framing */}
           {/* Left Abstract Shape - More animated & fluid */}
@@ -281,7 +293,7 @@ export default function LandingPage() {
               repeat: Infinity,
               ease: "easeInOut",
             }}
-            className="absolute top-[10%] left-[5%] w-40 h-40 bg-white/20 border border-blue-200/40 backdrop-blur-[12px] hidden xl:block shadow-[0_20px_50px_rgba(59,130,246,0.15)]"
+            className="absolute top-[10%] left-[5%] w-40 h-40 bg-white/20 dark:bg-white/5 border border-blue-200/40 backdrop-blur-[12px] hidden xl:block shadow-[0_20px_50px_rgba(59,130,246,0.15)] transition-colors duration-300"
           />
 
           {/* Right Abstract Shape - Reduced size and softened shadow */}
@@ -299,7 +311,7 @@ export default function LandingPage() {
               ease: "easeInOut",
               delay: 1,
             }}
-            className="absolute top-[38%] right-[5%] w-52 h-52 bg-white/10 border border-indigo-200/40 backdrop-blur-[6px] hidden xl:block shadow-[0_8px_30px_rgba(99,102,241,0.06)]"
+            className="absolute top-[38%] right-[5%] w-52 h-52 bg-white/10 dark:bg-white/[0.03] border border-indigo-200/40 backdrop-blur-[6px] hidden xl:block shadow-[0_8px_30px_rgba(99,102,241,0.06)] transition-colors duration-300"
           />
         </div>
 
@@ -335,10 +347,17 @@ export default function LandingPage() {
           </Link>
           <Link
             href="#playground"
-            className="flex items-center gap-2 bg-blue-50 text-blue-700 border border-blue-100 px-6 py-3.5 rounded-xl font-medium text-base hover:bg-blue-100 transition-all w-full sm:w-auto justify-center shadow-sm"
+            className="flex items-center gap-2 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-900 px-6 py-3.5 rounded-xl font-medium text-base hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-all transition-colors duration-300 w-full sm:w-auto justify-center shadow-sm"
           >
             <Zap className="w-4 h-4 animate-pulse" />
             Try Playground
+          </Link>
+          <Link
+            href="/dev"
+            className="flex items-center gap-2 bg-slate-900 text-white px-6 py-3.5 rounded-xl font-medium text-base hover:bg-slate-800 transition-all w-full sm:w-auto justify-center shadow-sm"
+          >
+            <Terminal className="w-4 h-4" />
+            Dev Dashboard
           </Link>
           <a
             href="https://github.com/Zerith-Labs/ZerithDB"
@@ -642,7 +661,7 @@ export default function LandingPage() {
                 <div className="flex justify-between text-sm font-medium mb-2">
                   <span className="text-foreground font-bold flex items-center gap-2">
                     ZerithDB (Local-first){" "}
-                    <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs">
+                    <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 rounded text-xs transition-colors duration-300">
                       Fastest
                     </span>
                   </span>
@@ -687,7 +706,7 @@ export default function LandingPage() {
                   <th className="py-4 px-6 font-semibold w-1/4">Feature</th>
                   <th className="py-4 px-6 font-semibold w-1/4">Firebase</th>
                   <th className="py-4 px-6 font-semibold w-1/4">Supabase</th>
-                  <th className="py-4 px-6 font-bold text-blue-600 bg-blue-50/50 w-1/4">
+                  <th className="py-4 px-6 font-bold text-blue-600 dark:text-blue-300 bg-blue-50/50 dark:bg-blue-950/20 w-1/4 transition-colors duration-300">
                     ZerithDB
                   </th>
                 </tr>
@@ -817,7 +836,7 @@ export default function LandingPage() {
               repeat: Infinity,
               ease: "easeInOut",
             }}
-            className="absolute top-12 left-[12%] w-36 h-36 bg-white/15 border border-blue-200/30 backdrop-blur-[10px] hidden md:block shadow-[0_15px_35px_rgba(0,0,0,0.08)]"
+            className="absolute top-12 left-[12%] w-36 h-36 bg-white/15 dark:bg-white/5 border border-blue-200/30 backdrop-blur-[10px] hidden md:block shadow-[0_15px_35px_rgba(0,0,0,0.08)] transition-colors duration-300"
           />
           <motion.div
             animate={{
@@ -832,7 +851,7 @@ export default function LandingPage() {
               ease: "easeInOut",
               delay: 1,
             }}
-            className="absolute bottom-12 right-[15%] w-48 h-48 bg-white/5 border border-gray-200/40 backdrop-blur-[5px] hidden md:block shadow-[0_10px_30px_rgba(0,0,0,0.03)]"
+            className="absolute bottom-12 right-[15%] w-48 h-48 bg-white/5 dark:bg-white/[0.03] border border-gray-200/40 backdrop-blur-[5px] hidden md:block shadow-[0_10px_30px_rgba(0,0,0,0.03)] transition-colors duration-300"
           />
         </div>
 
@@ -948,7 +967,7 @@ export default function LandingPage() {
               exit={{ opacity: 0, scale: 0.8, y: 20 }}
               transition={{ duration: 0.25 }}
               onClick={scrollToTop}
-              className="fixed bottom-5 right-5 md:bottom-8 md:right-8 z-50 bg-black text-white p-3 rounded-full shadow-lg hover:bg-gray-800 transition-colors"
+              className="fixed bottom-5 right-5 md:bottom-8 md:right-8 z-50 bg-black dark:bg-white text-white dark:text-black p-3 rounded-full shadow-lg hover:bg-gray-800 dark:hover:bg-gray-200 transition-colors duration-300"
               aria-label="Back to top"
             >
               <ChevronUp className="w-5 h-5" />

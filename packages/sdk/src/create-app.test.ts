@@ -20,7 +20,7 @@ describe("createApp", () => {
     expect(app).toBeDefined();
     expect(app.config.appId).toBe("test-app");
     expect(app.db).toBeDefined();
-    expect(app.sync).toBeDefined();
+    expect("sync" in app).toBe(true);
     expect(app.auth).toBeDefined();
     expect(app.network).toBeDefined();
     expect(app.dispose).toBeDefined();

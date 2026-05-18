@@ -29,7 +29,8 @@
     "zerithdb-core": "workspace:*",
     "zerithdb-db": "workspace:*",
     "zerithdb-network": "workspace:*",
-    "zerithdb-utils": "workspace:*"
+    "zerithdb-utils": "workspace:*",
+    "zerithdb-auth": "workspace:*"
   },
   "devDependencies": {
     "fake-indexeddb": "^6.0.0",

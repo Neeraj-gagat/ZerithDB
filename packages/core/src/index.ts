@@ -1,9 +1,12 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // zerithdb-core — Public API
 // ─────────────────────────────────────────────────────────────────────────────
-
 export { EventEmitter } from "./internal/event-emitter.js";
-export { ZerithDBError, ErrorCode } from "zerithdb-errors";
+export {
+  ZerithDBError,
+  ZerithValidationError,
+  ErrorCode,
+} from "./errors.js";
 export { Logger } from "./internal/logger.js";
 export type {
   ZerithDBConfig,
@@ -11,35 +14,26 @@ export type {
   AuthConfig,
   NetworkConfig,
   DebugConfig,
+  ConflictResolverConfig,
 } from "./types/config.js";
 export type {
   Document,
   DocumentId,
   CollectionName,
   QueryFilter,
+  QueryOptions,
   UpdateSpec,
   InsertResult,
   FindResult,
 } from "./types/db.js";
-export type {
-  PeerId,
-  PeerInfo,
-  RoomId,
-  NetworkMessage,
-  MediaStreamKind,
-  MediaTrackMetadata,
-  MediaStreamMetadata,
-} from "./types/network.js";
+export type { PeerId, PeerInfo, RoomId, NetworkMessage } from "./types/network.js";
 export type { Identity, PublicKey, Signature } from "./types/auth.js";
-
 export type {
   SyncUpdate,
   SyncState,
   AwarenessState,
   SyncPlugin,
-  EphemeralPeerState,
-  ActiveSpeakerState,
-  VideoParticipantState,
+  ConflictResolver,
 } from "./types/sync.js";
 
 export type {

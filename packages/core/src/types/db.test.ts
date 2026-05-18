@@ -53,8 +53,8 @@ export const validFilter: QueryFilter<User> = {
   name: "Alice",
 };
 
-// @ts-expect-error - Invalid field type
+// @ts-expect-error: Invalid field type
 export const invalidFieldType: QueryFilter<User> = { age: "wrong" };
 
-// @ts-expect-error - Invalid operator type
+// @ts-expect-error: Invalid operator type
 export const invalidOperatorType: QueryFilter<User> = { age: { $gt: "not-a-number" } };
